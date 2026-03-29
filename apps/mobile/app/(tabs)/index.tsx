@@ -1,9 +1,11 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LikeButton } from '@/components/like-button';
 
 const { width } = Dimensions.get('window');
@@ -94,6 +96,13 @@ const LEVEL_COLORS: Record<string, string> = {
 export default function TimelineScreen() {
   const [posts, setPosts] = useState<Post[]>(SEED_POSTS);
   const [activeFilter, setActiveFilter] = useState<string>('all');
+
+  useFocusEffect(useCallback(() => {
+    AsyncStorage.getItem('pond_user_posts').then((stored) => {
+      const userPosts: Post[] = stored ? JSON.parse(stored) : [];
+      setPosts([...userPosts, ...SEED_POSTS]);
+    });
+  }, []));
 
   const filters = [
     { id: 'all', label: 'すべて' },
@@ -201,14 +210,18 @@ export default function TimelineScreen() {
       </ScrollView>
 
       {/* FAB - New Post */}
-      <View style={styles.fab}>
+      <TouchableOpacity
+        onPress={() => router.push('/new-post')}
+        style={styles.fab}
+        activeOpacity={0.85}
+      >
         <LinearGradient
           colors={[Colors.primary, Colors.primaryContainer]}
           style={styles.fabGradient}
         >
           <Ionicons name="pencil" size={22} color="#fff" />
         </LinearGradient>
-      </View>
+      </TouchableOpacity>
     </View>
   );
 }

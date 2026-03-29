@@ -49,6 +49,7 @@ export default function RootLayout() {
         <Stack.Screen name="assessment" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="pond-chat" />
+        <Stack.Screen name="new-post" options={{ presentation: 'modal' }} />
       </Stack>
       <StatusBar style="dark" backgroundColor="#f7f9ff" />
     </>

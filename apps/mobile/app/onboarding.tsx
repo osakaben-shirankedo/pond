@@ -59,7 +59,10 @@ export default function OnboardingScreen() {
     await AsyncStorage.setItem('pond_selected_fields', JSON.stringify(selected));
     splashScale.value = withTiming(1, { duration: 480, easing: Easing.in(Easing.cubic) });
     setTimeout(() => {
-      router.push({ pathname: '/assessment', params: { field: selected[0] } });
+      router.push({
+        pathname: '/assessment',
+        params: { field: selected[0], queue: selected.slice(1).join(',') },
+      });
     }, 420);
   };
 

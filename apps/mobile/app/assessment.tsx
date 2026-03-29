@@ -100,8 +100,10 @@ function judgeLevel(answers: number[]): LevelKey {
 }
 
 export default function AssessmentScreen() {
-  const { field } = useLocalSearchParams<{ field: FieldId }>();
+  const { field, queue } = useLocalSearchParams<{ field: FieldId; queue?: string }>();
   const steps = getSteps(field ?? 'default');
+  const remainingQueue = queue ? queue.split(',').filter(Boolean) : [];
+  const nextField = remainingQueue[0] as FieldId | undefined;
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -160,10 +162,14 @@ export default function AssessmentScreen() {
       setLevel(judged);
       setDone(true);
 
-      const stored = await AsyncStorage.getItem('pond_selected_fields');
-      const fields: FieldId[] = stored ? JSON.parse(stored) : [field];
-      const ponds = fields.map((f) => ({ field: f, level: judgeLevel(newAnswers) }));
-      await AsyncStorage.setItem('pond_ponds', JSON.stringify(ponds));
+      // 既存の池を保持しつつ、この分野だけ追加・更新する
+      const existingStored = await AsyncStorage.getItem('pond_ponds');
+      const existing: { field: string; level: LevelKey }[] = existingStored
+        ? JSON.parse(existingStored)
+        : [];
+      const merged = existing.filter((p) => p.field !== field);
+      merged.push({ field: field ?? 'programming', level: judged });
+      await AsyncStorage.setItem('pond_ponds', JSON.stringify(merged));
       await AsyncStorage.setItem('pond_onboarding_done', 'true');
     }
 
@@ -171,7 +177,17 @@ export default function AssessmentScreen() {
   };
 
   const handleEnter = () => {
-    router.replace('/(tabs)');
+    if (nextField) {
+      router.replace({
+        pathname: '/assessment',
+        params: {
+          field: nextField,
+          queue: remainingQueue.slice(1).join(','),
+        },
+      });
+    } else {
+      router.replace('/(tabs)');
+    }
   };
 
   return (
@@ -261,7 +277,11 @@ export default function AssessmentScreen() {
               end={{ x: 1, y: 0 }}
               style={styles.enterBtnGradient}
             >
-              <Text style={styles.enterBtnText}>池に入る 🌊</Text>
+              <Text style={styles.enterBtnText}>
+                {nextField
+                  ? `次の池へ：${FIELD_NAMES[nextField] ?? nextField} →`
+                  : '池に入る 🌊'}
+              </Text>
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
