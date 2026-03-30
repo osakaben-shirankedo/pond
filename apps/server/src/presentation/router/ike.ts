@@ -16,6 +16,59 @@ import type { Env } from '../../index'
 
 const router = new Hono<Env>()
 
+router.post('/assign', async (c) => {
+  const body = await c.req.json()
+  const parsed = z.object({
+    field: z.string(),
+    level: z.string(),
+    purpose: z.string(),
+    pondIds: z.array(z.string()).min(1),
+  }).safeParse(body)
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
+
+  const { field, level, purpose, pondIds } = parsed.data
+
+  if (!c.env.CLAUDE_API_KEY) {
+    return c.json({ pondId: pondIds[0] })
+  }
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': c.env.CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 50,
+        messages: [{
+          role: 'user',
+          content: `あなたは学習コミュニティのマッチングAIです。
+ユーザー情報:
+- 分野: ${field}
+- レベル: ${level}
+- 目的・やり方: ${purpose}
+
+利用可能なグループ: ${pondIds.join(', ')}
+
+このユーザーに最も適したグループIDを1つだけ回答してください。グループIDのみ、余計な文字なしで答えてください。`,
+        }],
+      }),
+    })
+
+    const data = await res.json() as { content: { text: string }[] }
+    const assignedId = data.content[0]?.text?.trim()
+    if (assignedId && pondIds.includes(assignedId)) {
+      return c.json({ pondId: assignedId })
+    }
+    return c.json({ pondId: pondIds[0] })
+  } catch {
+    return c.json({ pondId: pondIds[0] })
+  }
+})
+
 router.use('*', authMiddleware)
 
 router.get('/list', async (c) => {

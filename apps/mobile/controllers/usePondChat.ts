@@ -4,6 +4,7 @@ import { type ChatMessage, SEED_MESSAGES } from '@/models/pond-chat';
 import type { LevelKey } from '@/constants/theme';
 import { FIELD_LABELS } from '@/models/field';
 import { getPondMembers, getAvatarIdByName, type PondMember } from '@/models/pond-instance';
+import { getRankingForPond, type RankedMember, POND_POINTS_KEY } from '@/models/points';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '@/services/api';
 import { authStorage } from '@/services/auth';
@@ -50,11 +51,16 @@ export function usePondChat(field: string, level: string, pondId: string) {
   const [text, setText] = useState('');
   const [myAvatarId, setMyAvatarId] = useState('fishbowl');
   const [myUserId, setMyUserId] = useState('');
+  const [myPoints, setMyPoints] = useState(0);
   const listRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem('pond_avatar').then((v) => {
-      if (v) setMyAvatarId(v);
+    Promise.all([
+      AsyncStorage.getItem('pond_avatar'),
+      AsyncStorage.getItem(POND_POINTS_KEY),
+    ]).then(([avatarStored, pointsStored]) => {
+      if (avatarStored) setMyAvatarId(avatarStored);
+      if (pointsStored) setMyPoints(parseInt(pointsStored, 10));
     });
     authStorage.getUserId().then((id) => {
       if (id) setMyUserId(id);
@@ -78,6 +84,7 @@ export function usePondChat(field: string, level: string, pondId: string) {
 
   const members: PondMember[] = getPondMembers(pondId, myAvatarId);
   const memberCount = members.length;
+  const ranking: RankedMember[] = getRankingForPond(pondId, myPoints, myAvatarId);
 
   const handleSend = useCallback(async () => {
     const trimmed = text.trim();
@@ -112,5 +119,5 @@ export function usePondChat(field: string, level: string, pondId: string) {
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
   }, [text, levelKey, isServerPond, pondId, myUserId]);
 
-  return { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId };
+  return { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId, ranking };
 }

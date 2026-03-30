@@ -10,6 +10,7 @@ export type Env = {
   Bindings: {
     POND_DB: D1Database
     JWT_SECRET: string
+    CLAUDE_API_KEY: string
   }
   Variables: {
     userId: string

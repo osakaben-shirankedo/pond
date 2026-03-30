@@ -27,11 +27,13 @@ export const AVATAR_PRESETS: AvatarPreset[] = [
 export const DEFAULT_AVATAR_ID = 'fishbowl';
 
 // ── Stats / Settings ──────────────────────────────────────────
-export const STATS = [
-  { label: '投稿数', value: '12' },
-  { label: 'もらったいいね', value: '84' },
-  { label: '参加チャレンジ', value: '7' },
-];
+export function buildStats(points: number) {
+  return [
+    { label: '投稿数', value: '12' },
+    { label: 'もらったいいね', value: '84' },
+    { label: 'ポイント', value: points.toLocaleString() },
+  ];
+}
 
 export const SETTINGS_ITEMS = [
   { iconName: 'notifications-outline' as const, label: 'プッシュ通知' },

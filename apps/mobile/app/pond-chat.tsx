@@ -20,10 +20,11 @@ const { width } = Dimensions.get('window');
 
 export default function PondChatScreen() {
   const { field, level, pondId } = useLocalSearchParams<{ field: string; level: string; pondId: string }>();
-  const { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId } =
+  const { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId, ranking } =
     usePondChat(field ?? '', level ?? '澄み池', pondId ?? '');
 
   const [showMembers, setShowMembers] = useState(false);
+  const [memberTab, setMemberTab] = useState<'members' | 'ranking'>('members');
   const [showMenu, setShowMenu] = useState(false);
 
   const handleLeave = () => {
@@ -184,24 +185,63 @@ export default function PondChatScreen() {
                 <Ionicons name="close" size={20} color={Colors.onSurfaceVariant} />
               </TouchableOpacity>
             </View>
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.memberList}>
-              {members.map((m) => (
-                <View key={m.id} style={styles.memberRow}>
-                  <AvatarSprite presetId={m.avatarId} size={44} />
-                  <View style={styles.memberInfo}>
-                    <View style={styles.memberNameRow}>
-                      <Text style={styles.memberName}>{m.name}</Text>
-                      {m.isMe && (
-                        <View style={styles.meBadge}>
-                          <Text style={styles.meBadgeText}>あなた</Text>
-                        </View>
-                      )}
+            {/* タブ */}
+            <View style={styles.tabRow}>
+              <TouchableOpacity
+                style={[styles.tab, memberTab === 'members' && styles.tabActive]}
+                onPress={() => setMemberTab('members')}
+              >
+                <Text style={[styles.tabText, memberTab === 'members' && styles.tabTextActive]}>メンバー</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, memberTab === 'ranking' && styles.tabActive]}
+                onPress={() => setMemberTab('ranking')}
+              >
+                <Text style={[styles.tabText, memberTab === 'ranking' && styles.tabTextActive]}>ランキング</Text>
+              </TouchableOpacity>
+            </View>
+            {memberTab === 'members' ? (
+              <ScrollView showsVerticalScrollIndicator={false} style={styles.memberList}>
+                {members.map((m) => (
+                  <View key={m.id} style={styles.memberRow}>
+                    <AvatarSprite presetId={m.avatarId} size={44} />
+                    <View style={styles.memberInfo}>
+                      <View style={styles.memberNameRow}>
+                        <Text style={styles.memberName}>{m.name}</Text>
+                        {m.isMe && (
+                          <View style={styles.meBadge}>
+                            <Text style={styles.meBadgeText}>あなた</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.memberLevel}>{m.level}</Text>
                     </View>
-                    <Text style={styles.memberLevel}>{m.level}</Text>
                   </View>
-                </View>
-              ))}
-            </ScrollView>
+                ))}
+              </ScrollView>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false} style={styles.memberList}>
+                {ranking.map((m) => (
+                  <View key={m.id} style={styles.rankRow}>
+                    <Text style={[styles.rankNum, m.rank === 1 && styles.rankGold, m.rank === 2 && styles.rankSilver, m.rank === 3 && styles.rankBronze]}>
+                      {m.rank}
+                    </Text>
+                    <AvatarSprite presetId={m.avatarId} size={40} />
+                    <View style={styles.memberInfo}>
+                      <View style={styles.memberNameRow}>
+                        <Text style={styles.memberName}>{m.name}</Text>
+                        {m.isMe && (
+                          <View style={styles.meBadge}>
+                            <Text style={styles.meBadgeText}>あなた</Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                    <Text style={styles.rankPoints}>{m.points.toLocaleString()} pt</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
           </View>
         </View>
       )}
@@ -406,6 +446,40 @@ const styles = StyleSheet.create({
   meBadge: { backgroundColor: Colors.primaryFixed, paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: Radius.full },
   meBadgeText: { fontFamily: 'Inter_600SemiBold', fontSize: 10, color: Colors.primary },
   memberLevel: { fontFamily: 'Inter_400Regular', fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
+
+  // タブ
+  tabRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow },
+  tab: { flex: 1, paddingVertical: Spacing.md, alignItems: 'center' },
+  tabActive: { borderBottomWidth: 2, borderBottomColor: Colors.primary },
+  tabText: { fontFamily: 'Inter_500Medium', fontSize: 14, color: Colors.onSurfaceVariant },
+  tabTextActive: { color: Colors.primary, fontFamily: 'Inter_700Bold' },
+
+  // ランキング
+  rankRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceContainerLow,
+  },
+  rankNum: {
+    width: 28,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontSize: 18,
+    color: Colors.onSurfaceVariant,
+    textAlign: 'center',
+  },
+  rankGold: { color: '#F4A500' },
+  rankSilver: { color: '#9E9E9E' },
+  rankBronze: { color: '#A0522D' },
+  rankPoints: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 14,
+    color: Colors.primary,
+    minWidth: 64,
+    textAlign: 'right',
+  },
 
   // 退出メニュー
   menuSheet: {

@@ -12,7 +12,29 @@ import {
   type LevelKey,
   type FieldId,
 } from '@/models/assessment';
-import { assignPondId } from '@/models/pond-instance';
+import { getPondIdsForFieldLevel, assignPondId } from '@/models/pond-instance';
+
+const SERVER_URL = 'http://localhost:8787';
+
+async function fetchAiAssignedPond(
+  field: string,
+  level: string,
+  purpose: string,
+  pondIds: string[]
+): Promise<string> {
+  try {
+    const res = await fetch(`${SERVER_URL}/ike/assign`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ field, level, purpose, pondIds }),
+    });
+    if (!res.ok) throw new Error('server error');
+    const data = await res.json() as { pondId: string };
+    return data.pondId;
+  } catch {
+    return assignPondId(field, level);
+  }
+}
 
 export function useAssessment(field: FieldId | undefined, queue: string | undefined) {
   const resolvedField = field ?? 'default';
@@ -27,6 +49,8 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
   const [answers, setAnswers] = useState<number[]>([]);
   const [done, setDone] = useState(false);
   const [level, setLevel] = useState<LevelKey | null>(null);
+  const [judgedLevel, setJudgedLevel] = useState<LevelKey | null>(null);
+  const [purposeSelected, setPurposeSelected] = useState(false);
   const [diving, setDiving] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
@@ -69,25 +93,36 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
       newMessages.push({
         id: 'ai-result',
         role: 'ai',
-        text: `ありがとう！判定完了です✨\n\nあなたは「${judged}」からスタートです。\n${getLevelDescription(judged)}\n\n同じレベルの仲間が待ってるよ！`,
+        text: `ありがとう！判定完了です✨\n\nあなたは「${judged}」からスタートです。\n${getLevelDescription(judged)}\n\nどんな目的で学びたいか教えてね！`,
       });
       setMessages(newMessages);
       setLevel(judged);
+      setJudgedLevel(judged);
       setDone(true);
-
-      const existingStored = await AsyncStorage.getItem('pond_ponds');
-      const existing: { field: string; level: LevelKey; pondId: string }[] = existingStored
-        ? JSON.parse(existingStored)
-        : [];
-      const resolvedFieldId = field ?? 'programming';
-      const pondId = assignPondId(resolvedFieldId, judged);
-      const merged = existing.filter((p) => p.field !== field);
-      merged.push({ field: resolvedFieldId, level: judged, pondId });
-      await AsyncStorage.setItem('pond_ponds', JSON.stringify(merged));
-      await AsyncStorage.setItem('pond_onboarding_done', 'true');
     }
 
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+  };
+
+  const handlePurpose = async (purpose: string) => {
+    const resolvedFieldId = field ?? 'programming';
+    const lv = judgedLevel!;
+
+    const pondIds = getPondIdsForFieldLevel(resolvedFieldId, lv);
+    const pondId = pondIds.length > 0
+      ? await fetchAiAssignedPond(resolvedFieldId, lv, purpose, pondIds)
+      : assignPondId(resolvedFieldId, lv);
+
+    const existingStored = await AsyncStorage.getItem('pond_ponds');
+    const existing: { field: string; level: LevelKey; pondId: string }[] = existingStored
+      ? JSON.parse(existingStored)
+      : [];
+    const merged = existing.filter((p) => p.field !== field);
+    merged.push({ field: resolvedFieldId, level: lv, pondId });
+    await AsyncStorage.setItem('pond_ponds', JSON.stringify(merged));
+    await AsyncStorage.setItem('pond_onboarding_done', 'true');
+
+    setPurposeSelected(true);
   };
 
   const handleEnter = () => {
@@ -114,6 +149,7 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
     messages,
     done,
     level,
+    purposeSelected,
     diving,
     nextField,
     scrollRef,
@@ -121,6 +157,7 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
     fieldLabel: FIELD_LABELS[resolvedField] ?? resolvedField,
     nextFieldLabel: nextField ? (FIELD_LABELS[nextField] ?? nextField) : undefined,
     handleOption,
+    handlePurpose,
     handleEnter,
     handleDiveComplete,
   };

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { type PondEntry } from '@/models/pond';
-import { STATS, SETTINGS_ITEMS, DEFAULT_AVATAR_ID } from '@/models/profile';
+import { buildStats, SETTINGS_ITEMS, DEFAULT_AVATAR_ID } from '@/models/profile';
+import { POND_POINTS_KEY } from '@/models/points';
 import { api } from '@/services/api';
 import { authStorage } from '@/services/auth';
 
@@ -19,15 +20,18 @@ export function useProfile() {
   const [avatarId, setAvatarId] = useState(DEFAULT_AVATAR_ID);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [profile, setProfile] = useState<ServerProfile | null>(null);
+  const [myPoints, setMyPoints] = useState(0);
 
   useEffect(() => {
     Promise.all([
       AsyncStorage.getItem('pond_ponds'),
       AsyncStorage.getItem('pond_avatar'),
+      AsyncStorage.getItem(POND_POINTS_KEY),
       authStorage.getToken(),
-    ]).then(([pondStored, avatarStored, token]) => {
+    ]).then(([pondStored, avatarStored, pointsStored, token]) => {
       if (pondStored) setPonds(JSON.parse(pondStored));
       if (avatarStored) setAvatarId(avatarStored);
+      if (pointsStored) setMyPoints(parseInt(pointsStored, 10));
 
       if (token) {
         api.get<ServerProfile>('/profile', token).then(({ data }) => {
@@ -69,10 +73,11 @@ export function useProfile() {
     avatarId,
     pickerVisible,
     profile,
+    myPoints,
     openPicker: () => setPickerVisible(true),
     closePicker: () => setPickerVisible(false),
     selectAvatar,
-    STATS,
+    STATS: buildStats(myPoints),
     SETTINGS_ITEMS,
     handleLogout,
     handleJoinPond,

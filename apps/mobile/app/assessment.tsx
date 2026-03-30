@@ -16,6 +16,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Colors, Radius, Spacing, Levels } from '@/constants/theme';
 import type { FieldId } from '@/constants/theme';
 import { useAssessment } from '@/controllers/useAssessment';
+import { PURPOSE_OPTIONS } from '@/models/pond-instance';
 import PondDiveAnimation from '@/components/animations/PondDiveAnimation';
 
 const { width } = Dimensions.get('window');
@@ -29,6 +30,7 @@ export default function AssessmentScreen() {
     messages,
     done,
     level,
+    purposeSelected,
     diving,
     nextField,
     scrollRef,
@@ -36,6 +38,7 @@ export default function AssessmentScreen() {
     fieldLabel,
     nextFieldLabel,
     handleOption,
+    handlePurpose,
     handleEnter,
     handleDiveComplete,
   } = useAssessment(field, queue);
@@ -120,20 +123,36 @@ export default function AssessmentScreen() {
               <Text style={styles.levelDesc}>{Levels[level].description}</Text>
             </LinearGradient>
           )}
-          <TouchableOpacity onPress={handleEnter} activeOpacity={0.85} style={styles.enterBtn}>
-            <LinearGradient
-              colors={[Colors.primary, Colors.primaryContainer]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.enterBtnGradient}
-            >
-              <Text style={styles.enterBtnText}>
-                {nextField
-                  ? `次の池へ：${nextFieldLabel} →`
-                  : '池に入る 🌊'}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
+          {!purposeSelected ? (
+            <BlurView intensity={20} tint="light" style={styles.optionsBlur}>
+              <Text style={styles.optionsHint}>目的・やり方を選んでください</Text>
+              {PURPOSE_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt}
+                  onPress={() => handlePurpose(opt)}
+                  activeOpacity={0.8}
+                  style={styles.optionBtn}
+                >
+                  <Text style={styles.optionText}>{opt}</Text>
+                </TouchableOpacity>
+              ))}
+            </BlurView>
+          ) : (
+            <TouchableOpacity onPress={handleEnter} activeOpacity={0.85} style={styles.enterBtn}>
+              <LinearGradient
+                colors={[Colors.primary, Colors.primaryContainer]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.enterBtnGradient}
+              >
+                <Text style={styles.enterBtnText}>
+                  {nextField
+                    ? `次の池へ：${nextFieldLabel} →`
+                    : '池に入る 🌊'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
         </Animated.View>
       )}
       {/* 飛び込みアニメーション */}

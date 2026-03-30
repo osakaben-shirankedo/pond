@@ -176,6 +176,13 @@ export const SEED_POND_INSTANCES: PondInstance[] = [
   },
 ];
 
+/** 指定分野・レベルの池IDリストを返す */
+export function getPondIdsForFieldLevel(field: string, level: string): string[] {
+  return SEED_POND_INSTANCES
+    .filter((p) => p.field === field && p.level === level)
+    .map((p) => p.pondId);
+}
+
 /** 指定分野・レベルで空きがある池を返す（memberCount < 4 → 自分が入って5人以内） */
 export function assignPondId(field: string, level: string): string {
   const available = SEED_POND_INSTANCES.find(
@@ -187,6 +194,14 @@ export function assignPondId(field: string, level: string): string {
   if (first) return first.pondId;
   return `${field}-${level}-A`.replace(/\s/g, '_');
 }
+
+export const PURPOSE_OPTIONS = [
+  '独学・自習したい',
+  '仲間と一緒に学びたい',
+  'プロジェクトを作りたい',
+  '試験・資格取得を目指したい',
+  '趣味として楽しみたい',
+];
 
 /** pondId からインスタンスを取得 */
 export function getPondInstance(pondId: string): PondInstance | undefined {
