@@ -13,182 +13,29 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState, useRef, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, Radius, Spacing, Levels } from '@/constants/theme';
-import type { LevelKey, FieldId } from '@/constants/theme';
+import type { FieldId } from '@/constants/theme';
+import { useAssessment } from '@/controllers/useAssessment';
 
 const { width } = Dimensions.get('window');
 
-const FIELD_NAMES: Record<string, string> = {
-  programming: 'プログラミング',
-  math: '数学',
-  english: '英語',
-  art: 'アート',
-  music: '音楽',
-  science: '科学',
-};
-
-type Message = {
-  id: string;
-  role: 'ai' | 'user';
-  text: string;
-};
-
-type AssessmentStep = {
-  question: string;
-  options: string[];
-};
-
-const ASSESSMENT_STEPS: Record<string, AssessmentStep[]> = {
-  programming: [
-    {
-      question: 'プログラミングを始めてどのくらいですか？',
-      options: ['始めたばかり（〜3ヶ月）', '少し経験あり（3ヶ月〜1年）', '経験あり（1〜3年）', 'かなり経験あり（3年以上）'],
-    },
-    {
-      question: '主にどの言語・環境を使っていますか？',
-      options: ['Scratch / ビジュアル言語', 'Python / JavaScript 基礎', 'Webアプリ / API開発', 'OSS貢献・競プロ上級'],
-    },
-    {
-      question: '直近で作ったものを教えてください',
-      options: ['まだ何も作ったことない', 'チュートリアル通りに作った', '自分でアレンジして作った', 'オリジナルのサービスを作った'],
-    },
-  ],
-  math: [
-    {
-      question: '数学はどこまで学習しましたか？',
-      options: ['中学数学まで', '高校数学（数I・数A）', '高校数学（数II・B・C）', '大学数学・競技数学'],
-    },
-    {
-      question: '得意な分野はどれですか？',
-      options: ['計算・方程式', '図形・幾何', '確率・統計', '微積・線形代数'],
-    },
-    {
-      question: '数学の問題集はどのレベルを使っていますか？',
-      options: ['教科書の基本問題', '定番問題集（チャートなど）', '入試・コンテスト問題', '数学オリンピックレベル'],
-    },
-  ],
-  default: [
-    {
-      question: 'この分野を始めてどのくらいですか？',
-      options: ['始めたばかり（〜3ヶ月）', '少し経験あり（3ヶ月〜1年）', '経験あり（1〜3年）', 'かなり経験あり（3年以上）'],
-    },
-    {
-      question: '今の自分のレベルはどのくらいだと思いますか？',
-      options: ['入門・基礎を学んでいる', '基礎は身についた', '応用・実践ができる', 'プロ・上級者レベル'],
-    },
-    {
-      question: '直近でどんな活動をしていますか？',
-      options: ['入門コンテンツを見ている', '練習・課題に取り組んでいる', 'コンテストや発表をしている', 'メンタリング・指導をしている'],
-    },
-  ],
-};
-
-function getSteps(field: string): AssessmentStep[] {
-  return ASSESSMENT_STEPS[field] ?? ASSESSMENT_STEPS.default;
-}
-
-function judgeLevel(answers: number[]): LevelKey {
-  const total = answers.reduce((a, b) => a + b, 0);
-  const max = answers.length * 3;
-  const ratio = total / max;
-  if (ratio < 0.25) return '澄み池';
-  if (ratio < 0.5) return '碧の池';
-  if (ratio < 0.75) return '深碧池';
-  return '蒼淵';
-}
-
 export default function AssessmentScreen() {
   const { field, queue } = useLocalSearchParams<{ field: FieldId; queue?: string }>();
-  const steps = getSteps(field ?? 'default');
-  const remainingQueue = queue ? queue.split(',').filter(Boolean) : [];
-  const nextField = remainingQueue[0] as FieldId | undefined;
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '0',
-      role: 'ai',
-      text: `${FIELD_NAMES[field ?? ''] ?? field}の池に入る前に、3つだけ質問させてください！\n\n${steps[0].question}`,
-    },
-  ]);
-  const [stepIndex, setStepIndex] = useState(0);
-  const [answers, setAnswers] = useState<number[]>([]);
-  const [done, setDone] = useState(false);
-  const [level, setLevel] = useState<LevelKey | null>(null);
-  const scrollRef = useRef<ScrollView>(null);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (done && level) {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [done, level]);
-
-  const handleOption = async (optionIndex: number) => {
-    const currentStep = steps[stepIndex];
-    const userMessage: Message = {
-      id: `u-${stepIndex}`,
-      role: 'user',
-      text: currentStep.options[optionIndex],
-    };
-
-    const newAnswers = [...answers, optionIndex];
-    setAnswers(newAnswers);
-
-    const next = stepIndex + 1;
-    const newMessages = [...messages, userMessage];
-
-    if (next < steps.length) {
-      newMessages.push({
-        id: `ai-${next}`,
-        role: 'ai',
-        text: steps[next].question,
-      });
-      setMessages(newMessages);
-      setStepIndex(next);
-    } else {
-      const judged = judgeLevel(newAnswers);
-      newMessages.push({
-        id: 'ai-result',
-        role: 'ai',
-        text: `ありがとう！判定完了です✨\n\nあなたは「${judged}」からスタートです。\n${levelDesc(judged)}\n\n同じレベルの仲間が待ってるよ！`,
-      });
-      setMessages(newMessages);
-      setLevel(judged);
-      setDone(true);
-
-      // 既存の池を保持しつつ、この分野だけ追加・更新する
-      const existingStored = await AsyncStorage.getItem('pond_ponds');
-      const existing: { field: string; level: LevelKey }[] = existingStored
-        ? JSON.parse(existingStored)
-        : [];
-      const merged = existing.filter((p) => p.field !== field);
-      merged.push({ field: field ?? 'programming', level: judged });
-      await AsyncStorage.setItem('pond_ponds', JSON.stringify(merged));
-      await AsyncStorage.setItem('pond_onboarding_done', 'true');
-    }
-
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-  };
-
-  const handleEnter = () => {
-    if (nextField) {
-      router.replace({
-        pathname: '/assessment',
-        params: {
-          field: nextField,
-          queue: remainingQueue.slice(1).join(','),
-        },
-      });
-    } else {
-      router.replace('/(tabs)');
-    }
-  };
+  const {
+    steps,
+    stepIndex,
+    messages,
+    done,
+    level,
+    nextField,
+    scrollRef,
+    fadeAnim,
+    fieldLabel,
+    nextFieldLabel,
+    handleOption,
+    handleEnter,
+  } = useAssessment(field, queue);
 
   return (
     <KeyboardAvoidingView
@@ -206,7 +53,7 @@ export default function AssessmentScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>AI査定チャット</Text>
         <View style={styles.fieldBadge}>
-          <Text style={styles.fieldBadgeText}>{FIELD_NAMES[field ?? ''] ?? field}</Text>
+          <Text style={styles.fieldBadgeText}>{fieldLabel}</Text>
         </View>
       </BlurView>
 
@@ -279,7 +126,7 @@ export default function AssessmentScreen() {
             >
               <Text style={styles.enterBtnText}>
                 {nextField
-                  ? `次の池へ：${FIELD_NAMES[nextField] ?? nextField} →`
+                  ? `次の池へ：${nextFieldLabel} →`
                   : '池に入る 🌊'}
               </Text>
             </LinearGradient>
@@ -288,10 +135,6 @@ export default function AssessmentScreen() {
       )}
     </KeyboardAvoidingView>
   );
-}
-
-function levelDesc(level: LevelKey): string {
-  return Levels[level].description;
 }
 
 const styles = StyleSheet.create({
@@ -334,10 +177,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceContainerLow,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  backIcon: {
-    fontSize: 18,
-    color: Colors.primary,
   },
   headerTitle: {
     flex: 1,
