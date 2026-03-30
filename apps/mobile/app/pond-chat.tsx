@@ -20,11 +20,12 @@ const { width } = Dimensions.get('window');
 
 export default function PondChatScreen() {
   const { field, level, pondId } = useLocalSearchParams<{ field: string; level: string; pondId: string }>();
-  const { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId, ranking } =
+  const { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId, ranking, activeChallenges } =
     usePondChat(field ?? '', level ?? '澄み池', pondId ?? '');
 
   const [showMembers, setShowMembers] = useState(false);
   const [memberTab, setMemberTab] = useState<'members' | 'ranking'>('members');
+  const [bannerExpanded, setBannerExpanded] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
 
   const handleLeave = () => {
@@ -132,6 +133,49 @@ export default function PondChatScreen() {
           <Ionicons name="ellipsis-vertical" size={20} color={Colors.onSurfaceVariant} />
         </TouchableOpacity>
       </BlurView>
+
+      {/* チャレンジバナー（LINEアナウンス風） */}
+      {activeChallenges.length > 0 && (
+        <View style={styles.challengeBannerWrap}>
+          {/* 常に先頭1件を表示 */}
+          <TouchableOpacity
+            style={styles.challengeBannerRow}
+            activeOpacity={0.85}
+            onPress={() => router.push({ pathname: '/challenge-submit', params: { challengeId: activeChallenges[0].id } })}
+          >
+            <Ionicons name="flash" size={14} color={Colors.primary} />
+            <Text style={styles.challengeBannerText} numberOfLines={1}>
+              {activeChallenges[0].title}
+            </Text>
+            <Text style={styles.challengeBannerAction}>提出する →</Text>
+            {activeChallenges.length > 1 && (
+              <TouchableOpacity
+                hitSlop={8}
+                onPress={(e) => { e.stopPropagation(); setBannerExpanded((v) => !v); }}
+                style={styles.bannerExpandBtn}
+              >
+                <Ionicons name={bannerExpanded ? 'chevron-up' : 'chevron-down'} size={14} color={Colors.onSurfaceVariant} />
+                <Text style={styles.bannerExpandCount}>+{activeChallenges.length - 1}</Text>
+              </TouchableOpacity>
+            )}
+          </TouchableOpacity>
+          {/* 2件目以降（展開時） */}
+          {bannerExpanded && activeChallenges.slice(1).map((ch) => (
+            <TouchableOpacity
+              key={ch.id}
+              style={[styles.challengeBannerRow, styles.challengeBannerRowSub]}
+              activeOpacity={0.85}
+              onPress={() => router.push({ pathname: '/challenge-submit', params: { challengeId: ch.id } })}
+            >
+              <Ionicons name="flash-outline" size={13} color={Colors.onSurfaceVariant} />
+              <Text style={[styles.challengeBannerText, { color: Colors.onSurfaceVariant }]} numberOfLines={1}>
+                {ch.title}
+              </Text>
+              <Text style={styles.challengeBannerAction}>提出する →</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {/* Messages */}
       <FlatList
@@ -446,6 +490,46 @@ const styles = StyleSheet.create({
   meBadge: { backgroundColor: Colors.primaryFixed, paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: Radius.full },
   meBadgeText: { fontFamily: 'Inter_600SemiBold', fontSize: 10, color: Colors.primary },
   memberLevel: { fontFamily: 'Inter_400Regular', fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
+
+  // チャレンジバナー
+  challengeBannerWrap: {
+    backgroundColor: Colors.primaryFixed,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: `${Colors.primary}33`,
+  },
+  challengeBannerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    gap: Spacing.xs,
+  },
+  challengeBannerRowSub: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: `${Colors.primary}22`,
+  },
+  challengeBannerText: {
+    flex: 1,
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    color: Colors.primary,
+  },
+  challengeBannerAction: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    color: Colors.primary,
+  },
+  bannerExpandBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingLeft: Spacing.xs,
+  },
+  bannerExpandCount: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    color: Colors.onSurfaceVariant,
+  },
 
   // タブ
   tabRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow },

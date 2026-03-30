@@ -5,6 +5,7 @@ import type { LevelKey } from '@/constants/theme';
 import { FIELD_LABELS } from '@/models/field';
 import { getPondMembers, getAvatarIdByName, type PondMember } from '@/models/pond-instance';
 import { getRankingForPond, type RankedMember, POND_POINTS_KEY } from '@/models/points';
+import { CHALLENGES, CHALLENGE_JOINED_KEY, FIELD_ID_MAP, type Challenge } from '@/models/challenges';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '@/services/api';
 import { authStorage } from '@/services/auth';
@@ -52,20 +53,30 @@ export function usePondChat(field: string, level: string, pondId: string) {
   const [myAvatarId, setMyAvatarId] = useState('fishbowl');
   const [myUserId, setMyUserId] = useState('');
   const [myPoints, setMyPoints] = useState(0);
+  const [activeChallenges, setActiveChallenges] = useState<Challenge[]>([]);
   const listRef = useRef<FlatList>(null);
 
   useEffect(() => {
     Promise.all([
       AsyncStorage.getItem('pond_avatar'),
       AsyncStorage.getItem(POND_POINTS_KEY),
-    ]).then(([avatarStored, pointsStored]) => {
+      AsyncStorage.getItem(CHALLENGE_JOINED_KEY),
+    ]).then(([avatarStored, pointsStored, joinedStr]) => {
       if (avatarStored) setMyAvatarId(avatarStored);
       if (pointsStored) setMyPoints(parseInt(pointsStored, 10));
+      // この池のfieldに対応するチャレンジのうち参加中のものを取得
+      const joinedIds: string[] = joinedStr ? JSON.parse(joinedStr) : [];
+      const fieldKey = Object.entries(FIELD_ID_MAP).find(([, v]) => v === field)?.[0];
+      const matched = CHALLENGES.filter(
+        (c) => joinedIds.includes(c.id) && (c.field === fieldKey || c.field === field)
+      );
+      // 古い順（daysLeftが多い順）に並べる
+      setActiveChallenges(matched.sort((a, b) => b.daysLeft - a.daysLeft));
     });
     authStorage.getUserId().then((id) => {
       if (id) setMyUserId(id);
     });
-  }, []);
+  }, [field]);
 
   // サーバー池の場合はメッセージを取得
   useEffect(() => {
@@ -119,5 +130,5 @@ export function usePondChat(field: string, level: string, pondId: string) {
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
   }, [text, levelKey, isServerPond, pondId, myUserId]);
 
-  return { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId, ranking };
+  return { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId, ranking, activeChallenges };
 }

@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { FieldIcon } from '@/components/ui/field-icon';
 import { FIELD_ID_MAP } from '@/models/challenges';
@@ -10,14 +11,13 @@ import { useChallenges } from '@/controllers/useChallenges';
 const { width } = Dimensions.get('window');
 
 export default function ChallengesScreen() {
-  const { challenges, toggleJoin } = useChallenges();
+  const { challenges, joinChallenge, leaveChallenge } = useChallenges();
 
   return (
     <View style={styles.container}>
       <View style={[styles.blob, styles.blob1]} />
       <View style={[styles.blob, styles.blob2]} />
 
-      {/* Header */}
       <BlurView intensity={20} tint="light" style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>週次チャレンジ</Text>
@@ -29,7 +29,6 @@ export default function ChallengesScreen() {
       </BlurView>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Active challenge banner */}
         <LinearGradient
           colors={[Colors.primary, Colors.secondary]}
           start={{ x: 0, y: 0 }}
@@ -43,7 +42,6 @@ export default function ChallengesScreen() {
           </View>
         </LinearGradient>
 
-        {/* Challenge cards */}
         {challenges.map((ch) => (
           <View key={ch.id} style={styles.card}>
             <View style={styles.cardHeader}>
@@ -54,6 +52,11 @@ export default function ChallengesScreen() {
               <View style={[styles.levelTag, ch.level === '蒼淵' && styles.levelTagDark]}>
                 <Text style={styles.levelTagText}>{ch.level}</Text>
               </View>
+              {ch.isSubjective && (
+                <View style={styles.subjectiveTag}>
+                  <Text style={styles.subjectiveTagText}>AI採点</Text>
+                </View>
+              )}
             </View>
 
             <Text style={styles.cardTitle}>{ch.title}</Text>
@@ -70,24 +73,49 @@ export default function ChallengesScreen() {
               </View>
             </View>
 
-            <TouchableOpacity
-              onPress={() => toggleJoin(ch.id)}
-              activeOpacity={0.85}
-              style={[styles.joinBtn, ch.joined && styles.joinBtnActive]}
-            >
-              {ch.joined ? (
-                <Text style={styles.joinBtnTextActive}>参加中</Text>
-              ) : (
+            {ch.joined ? (
+              <View style={styles.joinedRow}>
+                <TouchableOpacity
+                  onPress={() => leaveChallenge(ch.id)}
+                  activeOpacity={0.85}
+                  style={styles.joinedBtn}
+                >
+                  <Ionicons name="checkmark-circle" size={16} color={Colors.primary} />
+                  <Text style={styles.joinedBtnText}>参加中</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => router.push({ pathname: '/challenge-submit', params: { challengeId: ch.id } })}
+                  activeOpacity={0.85}
+                  style={styles.submitBtn}
+                >
+                  <LinearGradient
+                    colors={[Colors.primary, Colors.primaryContainer]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.submitBtnGradient}
+                  >
+                    <Ionicons name="send" size={14} color="#fff" />
+                    <Text style={styles.submitBtnText}>提出する</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={() => joinChallenge(ch.id)}
+                activeOpacity={0.85}
+                style={styles.joinBtn}
+              >
                 <LinearGradient
                   colors={[Colors.primary, Colors.primaryContainer]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.joinBtnGradient}
                 >
-                  <Text style={styles.joinBtnText}>参加する</Text>
+                  <Ionicons name="people" size={16} color="#fff" />
+                  <Text style={styles.joinBtnText}>チームで参加する</Text>
                 </LinearGradient>
-              )}
-            </TouchableOpacity>
+              </TouchableOpacity>
+            )}
           </View>
         ))}
         <View style={{ height: 100 }} />
@@ -137,7 +165,7 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 2,
   },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flexWrap: 'wrap' },
   fieldTag: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -151,14 +179,36 @@ const styles = StyleSheet.create({
   levelTag: { backgroundColor: Colors.primaryFixed, paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: Radius.full },
   levelTagDark: { backgroundColor: Colors.primary },
   levelTagText: { fontFamily: 'Inter_600SemiBold', fontSize: 11, color: Colors.primary },
+  subjectiveTag: { backgroundColor: `${Colors.secondary}33`, paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: Radius.full },
+  subjectiveTagText: { fontFamily: 'Inter_600SemiBold', fontSize: 11, color: Colors.secondary },
   cardTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 18, color: Colors.onSurface },
   cardDesc: { fontFamily: 'Inter_400Regular', fontSize: 14, color: Colors.onSurfaceVariant, lineHeight: 22 },
   cardMeta: { flexDirection: 'row', gap: Spacing.lg },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
   metaText: { fontFamily: 'Inter_500Medium', fontSize: 13, color: Colors.onSurfaceVariant },
   joinBtn: { borderRadius: Radius.full, overflow: 'hidden' },
-  joinBtnActive: { backgroundColor: Colors.surfaceContainerLow, paddingVertical: 14, alignItems: 'center' },
-  joinBtnGradient: { paddingVertical: 14, alignItems: 'center', borderRadius: Radius.full },
+  joinBtnGradient: { paddingVertical: 14, alignItems: 'center', borderRadius: Radius.full, flexDirection: 'row', justifyContent: 'center', gap: Spacing.sm },
   joinBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: Colors.onPrimary },
-  joinBtnTextActive: { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 15, color: Colors.primary },
+  joinedRow: { flexDirection: 'row', gap: Spacing.sm },
+  joinedBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    backgroundColor: Colors.surfaceContainerLow,
+    paddingVertical: 14,
+    borderRadius: Radius.full,
+  },
+  joinedBtnText: { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 15, color: Colors.primary },
+  submitBtn: { flex: 1, borderRadius: Radius.full, overflow: 'hidden' },
+  submitBtnGradient: {
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderRadius: Radius.full,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+  },
+  submitBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: '#fff' },
 });
