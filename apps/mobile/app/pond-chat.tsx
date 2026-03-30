@@ -23,7 +23,7 @@ const { width } = Dimensions.get('window');
 
 export default function PondChatScreen() {
   const { field, level, pondId } = useLocalSearchParams<{ field: string; level: string; pondId: string }>();
-  const { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId, ranking, activeChallenges } =
+  const { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId, ranking, activeChallenges, isStagnant, callAiFish, aiFishLoading } =
     usePondChat(field ?? '', level ?? '澄み池', pondId ?? '');
 
   const [showMembers, setShowMembers] = useState(false);
@@ -78,6 +78,29 @@ export default function PondChatScreen() {
               <Text style={styles.challengeCardMsgBtnText}>参加する</Text>
             </TouchableOpacity>
           </LinearGradient>
+        </View>
+      );
+    }
+
+    // AI魚メッセージ
+    if (item.type === 'ai_fish') {
+      return (
+        <View style={styles.aiFishRow}>
+          <LinearGradient
+            colors={['#1ac6c6', '#27a7d0']}
+            style={styles.aiFishAvatar}
+          >
+            <Text style={styles.aiFishAvatarText}>🐟</Text>
+          </LinearGradient>
+          <View style={styles.aiFishBubbleWrap}>
+            <View style={styles.aiFishSenderRow}>
+              <Text style={styles.aiFishSenderName}>AI魚</Text>
+              <Text style={styles.timeOther}>{item.time}</Text>
+            </View>
+            <View style={styles.aiFishBubble}>
+              <Text style={styles.aiFishText}>{item.content}</Text>
+            </View>
+          </View>
         </View>
       );
     }
@@ -217,6 +240,15 @@ export default function PondChatScreen() {
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
       />
 
+      {/* 停滞バナー */}
+      {isStagnant && (
+        <TouchableOpacity style={styles.stagnantBanner} onPress={callAiFish} activeOpacity={0.8} disabled={aiFishLoading}>
+          <Text style={styles.stagnantBannerEmoji}>🐟</Text>
+          <Text style={styles.stagnantBannerText}>池が静かです。AI魚に話題を出してもらう？</Text>
+          <Text style={styles.stagnantBannerAction}>{aiFishLoading ? '…' : 'タップ'}</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Input bar */}
       <BlurView intensity={30} tint="light" style={styles.inputBar}>
         <AvatarSprite presetId={myAvatarId} size={32} />
@@ -230,6 +262,14 @@ export default function PondChatScreen() {
           maxLength={400}
           returnKeyType="default"
         />
+        <TouchableOpacity
+          onPress={callAiFish}
+          style={[styles.fishBtn, aiFishLoading && styles.sendBtnDisabled]}
+          disabled={aiFishLoading}
+          hitSlop={8}
+        >
+          <Text style={styles.fishBtnText}>🐟</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           onPress={handleSend}
           style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}
@@ -656,6 +696,44 @@ const styles = StyleSheet.create({
     minWidth: 64,
     textAlign: 'right',
   },
+
+  // AI魚
+  aiFishRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm, maxWidth: width * 0.82, marginVertical: 2 },
+  aiFishAvatar: { width: 34, height: 34, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center' },
+  aiFishAvatarText: { fontSize: 18 },
+  aiFishBubbleWrap: { flex: 1, gap: 3 },
+  aiFishSenderRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginLeft: 2 },
+  aiFishSenderName: { fontFamily: 'Inter_700Bold', fontSize: 11, color: '#1ac6c6' },
+  aiFishBubble: {
+    backgroundColor: '#e6fafa',
+    borderRadius: Radius.lg,
+    borderBottomLeftRadius: 6,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    maxWidth: width * 0.65,
+    borderWidth: 1,
+    borderColor: '#b2ecec',
+  },
+  aiFishText: { fontFamily: 'Inter_400Regular', fontSize: 14, color: '#1a7070', lineHeight: 20 },
+
+  // 停滞バナー
+  stagnantBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e6fafa',
+    borderTopWidth: 1,
+    borderTopColor: '#b2ecec',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+    gap: Spacing.sm,
+  },
+  stagnantBannerEmoji: { fontSize: 18 },
+  stagnantBannerText: { flex: 1, fontFamily: 'Inter_400Regular', fontSize: 12, color: '#1a7070' },
+  stagnantBannerAction: { fontFamily: 'Inter_700Bold', fontSize: 12, color: '#1ac6c6' },
+
+  // 魚ボタン
+  fishBtn: { width: 36, height: 36, borderRadius: Radius.full, backgroundColor: '#e6fafa', alignItems: 'center', justifyContent: 'center', marginBottom: 1 },
+  fishBtnText: { fontSize: 18 },
 
   // 退出メニュー
   menuSheet: {

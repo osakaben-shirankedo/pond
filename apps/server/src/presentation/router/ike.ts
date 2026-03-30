@@ -69,6 +69,69 @@ router.post('/assign', async (c) => {
   }
 })
 
+router.post('/ai-fish', async (c) => {
+  const body = await c.req.json()
+  const parsed = z.object({
+    field: z.string(),
+    level: z.string(),
+    recentMessages: z.array(z.string()).default([]),
+    memberCount: z.number().default(10),
+    userMessageCount: z.number().default(0),
+  }).safeParse(body)
+  if (!parsed.success) return c.json({ error: 'BAD_REQUEST' }, 400)
+
+  const { field, level, recentMessages, memberCount, userMessageCount } = parsed.data
+
+  if (!c.env.CLAUDE_API_KEY) {
+    const fallbacks = [
+      `みんな！${field}で最近気になったこと、シェアしてみよう🐟`,
+      `停滞中かな？一言でいいので今日の学びを教えて！🐠`,
+      `仲間がいるよ〜！気軽に話しかけてね🐡`,
+    ]
+    return c.json({ message: fallbacks[Math.floor(Math.random() * fallbacks.length)] })
+  }
+
+  const situation = userMessageCount === 0
+    ? '池の中でまだ誰も発言していない静かな状況です。'
+    : `最近のメッセージは ${recentMessages.length} 件あり、あなたは ${userMessageCount} 件送りました。`
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': c.env.CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 120,
+        messages: [{
+          role: 'user',
+          content: `あなたは「${field}」分野の学習池に住むフレンドリーなAI魚キャラクターです。
+レベル帯: ${level} / メンバー数: ${memberCount}人
+状況: ${situation}
+最近のトーク(最新3件):
+${recentMessages.slice(-3).map((m, i) => `${i + 1}. ${m}`).join('\n') || '(まだメッセージなし)'}
+
+池のトークを活性化させる発言を1つ生成してください。
+- 停滞していれば${field}に関する学習の話題を提案する
+- 参加していない人がいれば参加を促す
+- 絵文字を使い魚キャラとして話す
+- 60文字以内で、質問形式が望ましい
+- キャラクター名や「AI魚:」などのプレフィックスは不要、本文のみ`,
+        }],
+      }),
+    })
+    const data = await res.json() as { content: { text: string }[] }
+    const message = data.content[0]?.text?.trim()
+    if (message) return c.json({ message })
+    return c.json({ message: `${field}の池、みんな元気？今日も一緒に頑張ろう！🐟` })
+  } catch {
+    return c.json({ message: `${field}について、最近どんな発見があった？🐠` })
+  }
+})
+
 router.use('*', authMiddleware)
 
 router.get('/list', async (c) => {

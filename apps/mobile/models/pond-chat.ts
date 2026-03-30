@@ -9,7 +9,7 @@ export type ChatMessage = {
   content: string;
   time: string;
   isMe: boolean;
-  type?: 'normal' | 'challenge';
+  type?: 'normal' | 'challenge' | 'ai_fish';
   challengeId?: string;
   challengeTitle?: string;
 };

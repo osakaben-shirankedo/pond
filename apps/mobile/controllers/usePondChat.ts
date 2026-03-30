@@ -117,6 +117,63 @@ export function usePondChat(field: string, level: string, pondId: string) {
   const memberCount = members.length;
   const ranking: RankedMember[] = getRankingForPond(pondId, myPoints, myAvatarId);
 
+  // 停滞検出: 自分のメッセージが0件なら停滞とみなす
+  const userMessageCount = messages.filter((m) => m.isMe && m.type !== 'challenge').length;
+  const isStagnant = userMessageCount === 0;
+
+  const [aiFishLoading, setAiFishLoading] = useState(false);
+
+  const callAiFish = useCallback(async () => {
+    if (aiFishLoading) return;
+    setAiFishLoading(true);
+    try {
+      const recentMessages = messages
+        .filter((m) => m.type !== 'challenge' && m.type !== 'ai_fish')
+        .slice(-5)
+        .map((m) => `${m.user}: ${m.content}`);
+
+      const res = await fetch('http://localhost:8787/ike/ai-fish', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          field: fieldLabel,
+          level: levelKey,
+          recentMessages,
+          memberCount,
+          userMessageCount,
+        }),
+      });
+      const data = await res.json() as { message: string };
+      const fishMsg: ChatMessage = {
+        id: `ai-fish-${Date.now()}`,
+        user: 'AI魚',
+        avatar: '🐟',
+        level: levelKey,
+        content: data.message,
+        time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
+        isMe: false,
+        type: 'ai_fish',
+      };
+      setMessages((prev) => [...prev, fishMsg]);
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
+    } catch {
+      const fishMsg: ChatMessage = {
+        id: `ai-fish-${Date.now()}`,
+        user: 'AI魚',
+        avatar: '🐟',
+        level: levelKey,
+        content: `${fieldLabel}について、今日気になったことをシェアしてみよう！🐠`,
+        time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
+        isMe: false,
+        type: 'ai_fish',
+      };
+      setMessages((prev) => [...prev, fishMsg]);
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
+    } finally {
+      setAiFishLoading(false);
+    }
+  }, [aiFishLoading, messages, fieldLabel, levelKey, memberCount, userMessageCount]);
+
   const handleSend = useCallback(async () => {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -150,5 +207,5 @@ export function usePondChat(field: string, level: string, pondId: string) {
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
   }, [text, levelKey, isServerPond, pondId, myUserId]);
 
-  return { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId, ranking, activeChallenges };
+  return { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId, ranking, activeChallenges, isStagnant, callAiFish, aiFishLoading };
 }
