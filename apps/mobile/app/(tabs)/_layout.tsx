@@ -14,7 +14,7 @@ function TabIcon({ focused, label, children }: TabIconProps) {
   return (
     <View style={styles.tabItem}>
       <View style={{ opacity: focused ? 1 : 0.4 }}>{children}</View>
-      <Text style={[styles.tabLabel, focused && styles.tabLabelFocused]}>{label}</Text>
+      <Text style={[styles.tabLabel, focused && styles.tabLabelFocused]} numberOfLines={1}>{label}</Text>
     </View>
   );
 }
