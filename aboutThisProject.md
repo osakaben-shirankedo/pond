@@ -41,7 +41,7 @@ pond/
 ├─ apps/
 │  ├─ web (Next.js)
 │  ├─ mobile (Expo app)
-│  └─ server (Hono.js)/
+│  └─ server (Hono.js,cloudflare worker)/
 │     ├─ index.js (server entry point)
 │     ├─ domain/
 │     │  ├─ User
@@ -52,12 +52,6 @@ pond/
 │     ├─ services
 │     └─ infrastructure
 └─ packages/
-   ├─ db/
-   │  ├─ User
-   │  ├─ ChatRoom
-   │  ├─ Message
-   │  ├─ Profile
-   │  └─ Prompt
    ├─ ui
    └─ utils
 ```
@@ -65,6 +59,7 @@ pond/
 ## 技術方針
 
 ### TODO
+
 - 404用のページ
 
 ### Server
@@ -73,6 +68,16 @@ pond/
 各レイヤー間はDIを徹底すること。
 
 セッション管理にはJWTを使用。
+
+ホスティングにはcloudflare workerを使用。
+
+フレームワークはHono
+
+DBはcloudflare d1
+
+ORMはDrizzle
+
+型はzod
 
 #### .env file
 
@@ -131,7 +136,6 @@ pond/
   - チャレンジのステータス
 - GET /challenge/:challenge_id/chat
   - チャレンジのチャット
-
 
 ### Admin web
 

@@ -1,9 +1,28 @@
 import { Hono } from 'hono'
+import authRouter from './presentation/router/auth'
+import ikeRouter from './presentation/router/ike'
+import profileRouter from './presentation/router/profile'
+import timelineRouter from './presentation/router/timeline'
+import challengeRouter from './presentation/router/challenge'
 
-const app = new Hono()
+export type Env = {
+  Bindings: {
+    POND_DB: D1Database
+    JWT_SECRET: string
+  }
+  Variables: {
+    userId: string
+  }
+}
 
-app.get('/', (c) => {
-  return c.text('Hello Hono!')
-})
+const app = new Hono<Env>()
+
+app.get('/health', (c) => c.json({ status: 'ok' }))
+
+app.route('/', authRouter)
+app.route('/ike', ikeRouter)
+app.route('/profile', profileRouter)
+app.route('/timeline', timelineRouter)
+app.route('/challenge', challengeRouter)
 
 export default app
