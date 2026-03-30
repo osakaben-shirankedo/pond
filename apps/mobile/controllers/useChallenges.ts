@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   CHALLENGES,
@@ -12,19 +13,25 @@ import {
 export function useChallenges() {
   const [joinedIds, setJoinedIds] = useState<string[]>([]);
   const [submissionsMap, setSubmissionsMap] = useState<Record<string, MySubmissionResult>>({});
-  const [participatingIds, setParticipatingIds] = useState<string[]>([]);
+  const [userFieldIds, setUserFieldIds] = useState<string[]>([]);
 
-  useEffect(() => {
-    AsyncStorage.multiGet([
-      CHALLENGE_JOINED_KEY,
-      CHALLENGE_SUBMISSION_KEY,
-      CHALLENGE_PARTICIPATING_KEY,
-    ]).then(([[, joinedStr], [, subStr], [, partStr]]) => {
-      if (joinedStr) setJoinedIds(JSON.parse(joinedStr));
-      if (subStr) setSubmissionsMap(JSON.parse(subStr));
-      if (partStr) setParticipatingIds(JSON.parse(partStr));
-    });
-  }, []);
+  // 画面フォーカス時に毎回再読み込み（提出後に戻ったときも反映）
+  useFocusEffect(
+    useCallback(() => {
+      AsyncStorage.multiGet([
+        CHALLENGE_JOINED_KEY,
+        CHALLENGE_SUBMISSION_KEY,
+        'pond_ponds',
+      ]).then(([[, joinedStr], [, subStr], [, pondsStr]]) => {
+        if (joinedStr) setJoinedIds(JSON.parse(joinedStr));
+        if (subStr) setSubmissionsMap(JSON.parse(subStr));
+        if (pondsStr) {
+          const ponds: { field: string }[] = JSON.parse(pondsStr);
+          setUserFieldIds(ponds.map((p) => p.field));
+        }
+      });
+    }, [])
+  );
 
   const joinChallenge = useCallback(async (id: string) => {
     const challenge = CHALLENGES.find((c) => c.id === id);
@@ -34,16 +41,37 @@ export function useChallenges() {
     setJoinedIds(newJoined);
     await AsyncStorage.setItem(CHALLENGE_JOINED_KEY, JSON.stringify(newJoined));
 
-    // 対応する池のチャットに自動投稿予約
+    const partStr = await AsyncStorage.getItem(CHALLENGE_PARTICIPATING_KEY);
+    const partIds: string[] = partStr ? JSON.parse(partStr) : [];
+    if (!partIds.includes(id)) {
+      await AsyncStorage.setItem(CHALLENGE_PARTICIPATING_KEY, JSON.stringify([...partIds, id]));
+    }
+
+    // 対応する池のチャットにチャレンジカードを投稿
     const pondsStr = await AsyncStorage.getItem('pond_ponds');
     const ponds: { field: string; pondId: string }[] = pondsStr ? JSON.parse(pondsStr) : [];
     const fieldId = FIELD_ID_MAP[challenge.field] ?? challenge.field;
     const matchingPond = ponds.find((p) => p.field === fieldId);
     if (matchingPond) {
-      const key = `challenge_pond_${matchingPond.pondId}`;
-      const existing: string[] = JSON.parse((await AsyncStorage.getItem(key)) ?? '[]');
-      if (!existing.includes(id)) {
-        await AsyncStorage.setItem(key, JSON.stringify([...existing, id]));
+      const key = `challenge_chat_${matchingPond.pondId}`;
+      const existing = JSON.parse((await AsyncStorage.getItem(key)) ?? '[]');
+      const alreadyPosted = existing.some((m: { challengeId: string }) => m.challengeId === id);
+      if (!alreadyPosted) {
+        const avatarStr = await AsyncStorage.getItem('pond_avatar');
+        const cardMsg = {
+          id: `challenge-${id}-${Date.now()}`,
+          user: 'あなた',
+          avatar: 'あ',
+          avatarId: avatarStr ?? 'fishbowl',
+          level: challenge.level,
+          content: `${challenge.title}にみんなで挑戦しましょう！`,
+          time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
+          isMe: true,
+          type: 'challenge',
+          challengeId: id,
+          challengeTitle: challenge.title,
+        };
+        await AsyncStorage.setItem(key, JSON.stringify([...existing, cardMsg]));
       }
     }
   }, [joinedIds]);
@@ -52,35 +80,30 @@ export function useChallenges() {
     const newJoined = joinedIds.filter((j) => j !== id);
     setJoinedIds(newJoined);
     await AsyncStorage.setItem(CHALLENGE_JOINED_KEY, JSON.stringify(newJoined));
+    const partStr = await AsyncStorage.getItem(CHALLENGE_PARTICIPATING_KEY);
+    const partIds: string[] = partStr ? JSON.parse(partStr) : [];
+    await AsyncStorage.setItem(CHALLENGE_PARTICIPATING_KEY, JSON.stringify(partIds.filter((p) => p !== id)));
   }, [joinedIds]);
 
-  const toggleParticipate = useCallback(async (id: string) => {
-    const next = participatingIds.includes(id)
-      ? participatingIds.filter((p) => p !== id)
-      : [...participatingIds, id];
-    setParticipatingIds(next);
-    await AsyncStorage.setItem(CHALLENGE_PARTICIPATING_KEY, JSON.stringify(next));
-  }, [participatingIds]);
-
-  const saveSubmission = useCallback(async (challengeId: string, result: MySubmissionResult) => {
-    const next = { ...submissionsMap, [challengeId]: result };
-    setSubmissionsMap(next);
-    await AsyncStorage.setItem(CHALLENGE_SUBMISSION_KEY, JSON.stringify(next));
-  }, [submissionsMap]);
-
-  const challenges = CHALLENGES.map((c) => ({
-    ...c,
-    joined: joinedIds.includes(c.id),
-  }));
+  const challenges = CHALLENGES
+    .filter((c) => {
+      if (userFieldIds.length === 0) return true;
+      const fieldId = FIELD_ID_MAP[c.field] ?? c.field;
+      return userFieldIds.includes(fieldId);
+    })
+    .map((c) => ({
+      ...c,
+      joined: joinedIds.includes(c.id),
+      passed: submissionsMap[c.id]?.pass === true,
+      // 自分が参加済みなら+1
+      participants: c.participants + (joinedIds.includes(c.id) ? 1 : 0),
+    }));
 
   return {
     challenges,
     joinedIds,
-    participatingIds,
     submissionsMap,
     joinChallenge,
     leaveChallenge,
-    toggleParticipate,
-    saveSubmission,
   };
 }

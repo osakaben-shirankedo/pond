@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { FlatList } from 'react-native';
 import { type ChatMessage, SEED_MESSAGES } from '@/models/pond-chat';
 import type { LevelKey } from '@/constants/theme';
@@ -56,27 +57,42 @@ export function usePondChat(field: string, level: string, pondId: string) {
   const [activeChallenges, setActiveChallenges] = useState<Challenge[]>([]);
   const listRef = useRef<FlatList>(null);
 
-  useEffect(() => {
+  const loadStorage = useCallback(() => {
     Promise.all([
       AsyncStorage.getItem('pond_avatar'),
       AsyncStorage.getItem(POND_POINTS_KEY),
       AsyncStorage.getItem(CHALLENGE_JOINED_KEY),
-    ]).then(([avatarStored, pointsStored, joinedStr]) => {
+      AsyncStorage.getItem(`challenge_chat_${pondId}`),
+    ]).then(([avatarStored, pointsStored, joinedStr, challengeChatStr]) => {
       if (avatarStored) setMyAvatarId(avatarStored);
       if (pointsStored) setMyPoints(parseInt(pointsStored, 10));
-      // この池のfieldに対応するチャレンジのうち参加中のものを取得
+
+      if (challengeChatStr) {
+        const challengeMsgs: ChatMessage[] = JSON.parse(challengeChatStr);
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map((m) => m.id));
+          const newMsgs = challengeMsgs.filter((m) => !existingIds.has(m.id));
+          return newMsgs.length > 0 ? [...prev, ...newMsgs] : prev;
+        });
+      }
+
       const joinedIds: string[] = joinedStr ? JSON.parse(joinedStr) : [];
       const fieldKey = Object.entries(FIELD_ID_MAP).find(([, v]) => v === field)?.[0];
       const matched = CHALLENGES.filter(
         (c) => joinedIds.includes(c.id) && (c.field === fieldKey || c.field === field)
       );
-      // 古い順（daysLeftが多い順）に並べる
       setActiveChallenges(matched.sort((a, b) => b.daysLeft - a.daysLeft));
     });
     authStorage.getUserId().then((id) => {
       if (id) setMyUserId(id);
     });
-  }, [field]);
+  }, [field, pondId]);
+
+  // 初回ロード
+  useEffect(() => { loadStorage(); }, [loadStorage]);
+
+  // 画面フォーカス時に再読み込み（チャレンジ参加後に戻ってきた際に反映）
+  useFocusEffect(useCallback(() => { loadStorage(); }, [loadStorage]));
 
   // サーバー池の場合はメッセージを取得
   useEffect(() => {

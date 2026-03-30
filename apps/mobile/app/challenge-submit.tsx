@@ -22,7 +22,8 @@ const { width } = Dimensions.get('window');
 const SERVER_URL = 'http://localhost:8787';
 
 export default function ChallengeSubmitScreen() {
-  const { challengeId } = useLocalSearchParams<{ challengeId: string }>();
+  const { challengeId, mode } = useLocalSearchParams<{ challengeId: string; mode?: string }>();
+  const isTimelineMode = mode === 'timeline';
   const challenge = CHALLENGES.find((c) => c.id === challengeId);
 
   const [answer, setAnswer] = useState('');
@@ -41,6 +42,7 @@ export default function ChallengeSubmitScreen() {
       AsyncStorage.getItem(CHALLENGE_SUBMISSION_KEY),
       AsyncStorage.getItem('pond_avatar'),
     ]).then(([partStr, subStr, avatarStr]) => {
+      // JOINED と PARTICIPATING を両方チェックして統一
       const participatingIds: string[] = partStr ? JSON.parse(partStr) : [];
       setIsParticipating(participatingIds.includes(challengeId));
       if (subStr) {
@@ -136,7 +138,7 @@ export default function ChallengeSubmitScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>{challenge.title}</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>{isTimelineMode ? 'みんなの回答' : challenge.title}</Text>
         {challenge.isSubjective && (
           <View style={styles.aiTag}>
             <Text style={styles.aiTagText}>AI採点</Text>
@@ -191,8 +193,45 @@ export default function ChallengeSubmitScreen() {
           )}
         </View>
 
+        {/* タイムラインモード: 直接みんなの回答を表示 */}
+        {isTimelineMode && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>みんなの回答</Text>
+            {result && (
+              <View style={styles.submissionCard}>
+                <View style={styles.submissionHeader}>
+                  <AvatarSprite presetId={myAvatarId} size={36} />
+                  <View style={styles.submissionMeta}>
+                    <View style={styles.submissionNameRow}>
+                      <Text style={styles.submissionUser}>あなた</Text>
+                      <View style={styles.meBadge}><Text style={styles.meBadgeText}>あなた</Text></View>
+                    </View>
+                    <Text style={styles.submissionTime}>たった今</Text>
+                  </View>
+                </View>
+                <Text style={styles.submissionAnswer}>{result.answer}</Text>
+              </View>
+            )}
+            {otherSubmissions.map((s) => (
+              <View key={s.id} style={styles.submissionCard}>
+                <View style={styles.submissionHeader}>
+                  <AvatarSprite presetId={s.avatarId} size={36} />
+                  <View style={styles.submissionMeta}>
+                    <Text style={styles.submissionUser}>{s.user}</Text>
+                    <Text style={styles.submissionTime}>{s.time}</Text>
+                  </View>
+                </View>
+                <Text style={styles.submissionAnswer}>{s.answer}</Text>
+              </View>
+            ))}
+            {otherSubmissions.length === 0 && !result && (
+              <Text style={styles.emptyText}>まだ提出者がいません</Text>
+            )}
+          </View>
+        )}
+
         {/* 提出フォーム or 結果 */}
-        {!result ? (
+        {!isTimelineMode && !result ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>回答を提出する</Text>
             <TextInput
@@ -228,7 +267,7 @@ export default function ChallengeSubmitScreen() {
               </LinearGradient>
             </TouchableOpacity>
           </View>
-        ) : (
+        ) : !isTimelineMode ? (
           <Animated.View style={[styles.section, { opacity: resultAnim }]}>
             <View style={[styles.resultCard, result.pass ? styles.resultCardPass : styles.resultCardFail]}>
               <Text style={styles.resultIcon}>{result.pass ? '⭕️' : '❌'}</Text>
@@ -263,10 +302,10 @@ export default function ChallengeSubmitScreen() {
               </TouchableOpacity>
             )}
           </Animated.View>
-        )}
+        ) : null}
 
-        {/* みんなの提出タイムライン */}
-        {showSubmissions && result?.pass && (
+        {/* みんなの提出タイムライン (提出後のトグル表示) */}
+        {!isTimelineMode && showSubmissions && result?.pass && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>みんなの回答</Text>
             {/* 自分の回答 */}

@@ -9,6 +9,9 @@ export type ChatMessage = {
   content: string;
   time: string;
   isMe: boolean;
+  type?: 'normal' | 'challenge';
+  challengeId?: string;
+  challengeTitle?: string;
 };
 
 export const SEED_MESSAGES: Record<string, Omit<ChatMessage, 'id' | 'isMe'>[]> = {

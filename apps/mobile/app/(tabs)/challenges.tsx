@@ -73,7 +73,31 @@ export default function ChallengesScreen() {
               </View>
             </View>
 
-            {ch.joined ? (
+            {ch.passed ? (
+              /* 成功済み */
+              <View style={styles.joinedRow}>
+                <View style={styles.passedBtn}>
+                  <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                  <Text style={styles.passedBtnText}>参加済み</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => router.push({ pathname: '/challenge-submit', params: { challengeId: ch.id, mode: 'timeline' } })}
+                  activeOpacity={0.85}
+                  style={styles.submitBtn}
+                >
+                  <LinearGradient
+                    colors={[Colors.secondary, Colors.secondaryContainer]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.submitBtnGradient}
+                  >
+                    <Ionicons name="list" size={14} color="#fff" />
+                    <Text style={styles.submitBtnText}>タイムラインを見る</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            ) : ch.joined ? (
+              /* 参加中・未提出 */
               <View style={styles.joinedRow}>
                 <TouchableOpacity
                   onPress={() => leaveChallenge(ch.id)}
@@ -100,6 +124,7 @@ export default function ChallengesScreen() {
                 </TouchableOpacity>
               </View>
             ) : (
+              /* 未参加 */
               <TouchableOpacity
                 onPress={() => joinChallenge(ch.id)}
                 activeOpacity={0.85}
@@ -189,6 +214,17 @@ const styles = StyleSheet.create({
   joinBtn: { borderRadius: Radius.full, overflow: 'hidden' },
   joinBtnGradient: { paddingVertical: 14, alignItems: 'center', borderRadius: Radius.full, flexDirection: 'row', justifyContent: 'center', gap: Spacing.sm },
   joinBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: Colors.onPrimary },
+  passedBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    backgroundColor: Colors.primary,
+    paddingVertical: 14,
+    borderRadius: Radius.full,
+  },
+  passedBtnText: { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 15, color: '#fff' },
   joinedRow: { flexDirection: 'row', gap: Spacing.sm },
   joinedBtn: {
     flex: 1,

@@ -53,6 +53,37 @@ export default function PondChatScreen() {
   };
 
   const renderMessage = useCallback(({ item }: { item: ChatMessage }) => {
+    // チャレンジカード
+    if (item.type === 'challenge' && item.challengeId) {
+      return (
+        <View style={styles.challengeCardMsg}>
+          <View style={styles.challengeCardMsgHeader}>
+            <AvatarSprite presetId={item.avatarId ?? 'fishbowl'} size={28} />
+            <Text style={styles.challengeCardMsgSender}>{item.user}</Text>
+            <Text style={styles.challengeCardMsgTime}>{item.time}</Text>
+          </View>
+          <LinearGradient
+            colors={[Colors.primary, Colors.secondary]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.challengeCardMsgBody}
+          >
+            <Ionicons name="flash" size={28} color="#fff" />
+            <Text style={styles.challengeCardMsgTitle}>
+              {item.challengeTitle}にみんなで挑戦しましょう！
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push({ pathname: '/challenge-submit', params: { challengeId: item.challengeId } })}
+              activeOpacity={0.85}
+              style={styles.challengeCardMsgBtn}
+            >
+              <Text style={styles.challengeCardMsgBtnText}>参加する</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+      );
+    }
+
     if (item.isMe) {
       return (
         <View style={styles.rowMe}>
@@ -490,6 +521,54 @@ const styles = StyleSheet.create({
   meBadge: { backgroundColor: Colors.primaryFixed, paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: Radius.full },
   meBadgeText: { fontFamily: 'Inter_600SemiBold', fontSize: 10, color: Colors.primary },
   memberLevel: { fontFamily: 'Inter_400Regular', fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
+
+  // チャレンジカードメッセージ
+  challengeCardMsg: {
+    marginVertical: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  challengeCardMsgHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingLeft: 2,
+  },
+  challengeCardMsgSender: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    color: Colors.onSurfaceVariant,
+    flex: 1,
+  },
+  challengeCardMsgTime: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 10,
+    color: Colors.outlineVariant,
+  },
+  challengeCardMsgBody: {
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    gap: Spacing.lg,
+  },
+  challengeCardMsgTitle: {
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontSize: 20,
+    color: '#fff',
+    textAlign: 'center',
+    lineHeight: 30,
+  },
+  challengeCardMsgBtn: {
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    paddingHorizontal: 40,
+    borderRadius: Radius.full,
+    marginTop: Spacing.sm,
+  },
+  challengeCardMsgBtnText: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 16,
+    color: Colors.primary,
+  },
 
   // チャレンジバナー
   challengeBannerWrap: {
