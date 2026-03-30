@@ -31,7 +31,7 @@ export function AvatarSprite({ presetId, size, style }: Props) {
   return (
     <Image
       source={source}
-      style={[{ width: size, height: size, borderRadius: size * 0.18 }, style]}
+      style={[{ width: size, height: size, borderRadius: size / 2 }, style]}
       resizeMode="contain"
     />
   );

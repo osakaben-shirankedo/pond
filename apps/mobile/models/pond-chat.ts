@@ -4,6 +4,7 @@ export type ChatMessage = {
   id: string;
   user: string;
   avatar: string;
+  avatarId?: string;
   level: LevelKey;
   content: string;
   time: string;

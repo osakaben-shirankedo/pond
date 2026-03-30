@@ -7,6 +7,7 @@ import { Colors, Radius, Spacing, Levels } from '@/constants/theme';
 import { FieldIcon } from '@/components/ui/field-icon';
 import { LEVEL_GRADIENTS } from '@/models/pond';
 import { FIELD_LABELS } from '@/models/field';
+import { getPondLabel } from '@/models/pond-instance';
 import { usePonds } from '@/controllers/usePonds';
 
 const { width } = Dimensions.get('window');
@@ -66,7 +67,7 @@ export default function PondsScreen() {
                 <TouchableOpacity
                   key={i}
                   activeOpacity={0.88}
-                  onPress={() => handleOpenChat(pond.field, pond.level)}
+                  onPress={() => handleOpenChat(pond.field, pond.level, pond.pondId)}
                   style={styles.pondCard}
                 >
                   <LinearGradient
@@ -81,7 +82,9 @@ export default function PondsScreen() {
                       </View>
                       <View style={styles.pondInfo}>
                         <Text style={styles.pondFieldName}>{FIELD_LABELS[pond.field] ?? pond.field}</Text>
-                        <Text style={styles.pondLevelName}>{pond.level}</Text>
+                        <Text style={styles.pondLevelName}>
+                          {pond.level}{getPondLabel(pond.pondId) ? ` 池${getPondLabel(pond.pondId)}` : ''}
+                        </Text>
                       </View>
                       <TouchableOpacity onPress={() => handleReassess(pond.field)} style={styles.reassessBtn}>
                         <Text style={styles.reassessBtnText}>再査定</Text>

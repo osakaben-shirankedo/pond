@@ -1,12 +1,14 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { FlatList } from 'react-native';
 import { type ChatMessage, SEED_MESSAGES } from '@/models/pond-chat';
 import type { LevelKey } from '@/constants/theme';
 import { FIELD_LABELS } from '@/models/field';
+import { getPondMembers, getAvatarIdByName, type PondMember } from '@/models/pond-instance';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 let msgCounter = 100;
 
-export function usePondChat(field: string, level: string) {
+export function usePondChat(field: string, level: string, pondId: string) {
   const fieldLabel = FIELD_LABELS[field] ?? field;
   const levelKey = level as LevelKey;
 
@@ -14,11 +16,22 @@ export function usePondChat(field: string, level: string) {
     ...m,
     id: String(i),
     isMe: false,
+    avatarId: getAvatarIdByName(m.user),
   }));
 
   const [messages, setMessages] = useState<ChatMessage[]>(seedMessages);
   const [text, setText] = useState('');
+  const [myAvatarId, setMyAvatarId] = useState('fishbowl');
   const listRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem('pond_avatar').then((v) => {
+      if (v) setMyAvatarId(v);
+    });
+  }, []);
+
+  const members: PondMember[] = getPondMembers(pondId, myAvatarId);
+  const memberCount = members.length; // 自分含めて5人
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
@@ -37,5 +50,5 @@ export function usePondChat(field: string, level: string) {
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
   }, [text, levelKey]);
 
-  return { fieldLabel, levelKey, messages, text, setText, listRef, handleSend };
+  return { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId };
 }

@@ -7,6 +7,7 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { AvatarSprite } from '@/components/avatar-sprite';
 import { FieldIcon } from '@/components/ui/field-icon';
 import { FIELD_LABELS } from '@/models/field';
 import { useNewPost } from '@/controllers/useNewPost';
@@ -23,6 +24,7 @@ export default function NewPostScreen() {
     remaining,
     inputRef,
     handlePost,
+    avatarId,
   } = useNewPost();
 
   return (
@@ -55,9 +57,7 @@ export default function NewPostScreen() {
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} keyboardShouldPersistTaps="handled">
         {/* Composer row */}
         <View style={styles.composerRow}>
-          <LinearGradient colors={[Colors.primaryFixed, Colors.surfaceContainerHigh]} style={styles.avatar}>
-            <Text style={styles.avatarText}>あ</Text>
-          </LinearGradient>
+          <AvatarSprite presetId={avatarId} size={44} />
           <View style={styles.inputArea}>
             {selectedPond && (
               <View style={styles.selectedFieldRow}>

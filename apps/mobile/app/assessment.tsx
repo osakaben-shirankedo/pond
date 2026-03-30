@@ -16,6 +16,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Colors, Radius, Spacing, Levels } from '@/constants/theme';
 import type { FieldId } from '@/constants/theme';
 import { useAssessment } from '@/controllers/useAssessment';
+import PondDiveAnimation from '@/components/animations/PondDiveAnimation';
 
 const { width } = Dimensions.get('window');
 
@@ -28,6 +29,7 @@ export default function AssessmentScreen() {
     messages,
     done,
     level,
+    diving,
     nextField,
     scrollRef,
     fadeAnim,
@@ -35,6 +37,7 @@ export default function AssessmentScreen() {
     nextFieldLabel,
     handleOption,
     handleEnter,
+    handleDiveComplete,
   } = useAssessment(field, queue);
 
   return (
@@ -133,6 +136,12 @@ export default function AssessmentScreen() {
           </TouchableOpacity>
         </Animated.View>
       )}
+      {/* 飛び込みアニメーション */}
+      <PondDiveAnimation
+        visible={diving}
+        levelName={level ?? ''}
+        onComplete={handleDiveComplete}
+      />
     </KeyboardAvoidingView>
   );
 }

@@ -8,15 +8,20 @@ export function useNewPost() {
   const [ponds, setPonds] = useState<PondEntry[]>([]);
   const [selectedField, setSelectedField] = useState<string | null>(null);
   const [content, setContent] = useState('');
+  const [avatarId, setAvatarId] = useState('fishbowl');
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem('pond_ponds').then((stored) => {
-      if (stored) {
-        const loaded: PondEntry[] = JSON.parse(stored);
+    Promise.all([
+      AsyncStorage.getItem('pond_ponds'),
+      AsyncStorage.getItem('pond_avatar'),
+    ]).then(([pondStored, avatarStored]) => {
+      if (pondStored) {
+        const loaded: PondEntry[] = JSON.parse(pondStored);
         setPonds(loaded);
         if (loaded.length > 0) setSelectedField(loaded[0].field);
       }
+      if (avatarStored) setAvatarId(avatarStored);
     });
     setTimeout(() => inputRef.current?.focus(), 300);
   }, []);
@@ -31,7 +36,7 @@ export function useNewPost() {
 
   const handlePost = async () => {
     if (!canPost || !selectedPond) return;
-    const newPost = buildNewPost(content, selectedPond);
+    const newPost = buildNewPost(content, selectedPond, avatarId);
     const stored = await AsyncStorage.getItem('pond_user_posts');
     const existing = stored ? JSON.parse(stored) : [];
     await AsyncStorage.setItem('pond_user_posts', JSON.stringify([newPost, ...existing]));
@@ -49,5 +54,6 @@ export function useNewPost() {
     remaining,
     inputRef,
     handlePost,
+    avatarId,
   };
 }

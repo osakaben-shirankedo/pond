@@ -4,6 +4,7 @@ import type { LevelKey } from '@/constants/theme';
 export type PondEntry = {
   field: string;
   level: LevelKey;
+  pondId: string;
 };
 
 export const LEVEL_ORDER: LevelKey[] = ['澄み池', '碧の池', '深碧池', '蒼淵'];

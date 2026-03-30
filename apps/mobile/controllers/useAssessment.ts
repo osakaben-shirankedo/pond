@@ -12,6 +12,7 @@ import {
   type LevelKey,
   type FieldId,
 } from '@/models/assessment';
+import { assignPondId } from '@/models/pond-instance';
 
 export function useAssessment(field: FieldId | undefined, queue: string | undefined) {
   const resolvedField = field ?? 'default';
@@ -26,6 +27,7 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
   const [answers, setAnswers] = useState<number[]>([]);
   const [done, setDone] = useState(false);
   const [level, setLevel] = useState<LevelKey | null>(null);
+  const [diving, setDiving] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -74,11 +76,13 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
       setDone(true);
 
       const existingStored = await AsyncStorage.getItem('pond_ponds');
-      const existing: { field: string; level: LevelKey }[] = existingStored
+      const existing: { field: string; level: LevelKey; pondId: string }[] = existingStored
         ? JSON.parse(existingStored)
         : [];
+      const resolvedFieldId = field ?? 'programming';
+      const pondId = assignPondId(resolvedFieldId, judged);
       const merged = existing.filter((p) => p.field !== field);
-      merged.push({ field: field ?? 'programming', level: judged });
+      merged.push({ field: resolvedFieldId, level: judged, pondId });
       await AsyncStorage.setItem('pond_ponds', JSON.stringify(merged));
       await AsyncStorage.setItem('pond_onboarding_done', 'true');
     }
@@ -96,8 +100,12 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
         },
       });
     } else {
-      router.replace('/(tabs)');
+      setDiving(true);
     }
+  };
+
+  const handleDiveComplete = () => {
+    router.replace('/(tabs)');
   };
 
   return {
@@ -106,6 +114,7 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
     messages,
     done,
     level,
+    diving,
     nextField,
     scrollRef,
     fadeAnim,
@@ -113,5 +122,6 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
     nextFieldLabel: nextField ? (FIELD_LABELS[nextField] ?? nextField) : undefined,
     handleOption,
     handleEnter,
+    handleDiveComplete,
   };
 }

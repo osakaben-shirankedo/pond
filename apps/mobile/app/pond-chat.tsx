@@ -1,14 +1,17 @@
 import {
   View, Text, StyleSheet, FlatList, TextInput,
-  TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions,
+  TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions, ScrollView,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { FieldIcon } from '@/components/ui/field-icon';
+import { AvatarSprite } from '@/components/avatar-sprite';
 import { LEVEL_GRADIENTS } from '@/models/pond';
 import { type ChatMessage } from '@/models/pond-chat';
 import { usePondChat } from '@/controllers/usePondChat';
@@ -16,9 +19,36 @@ import { usePondChat } from '@/controllers/usePondChat';
 const { width } = Dimensions.get('window');
 
 export default function PondChatScreen() {
-  const { field, level } = useLocalSearchParams<{ field: string; level: string }>();
-  const { fieldLabel, levelKey, messages, text, setText, listRef, handleSend } =
-    usePondChat(field ?? '', level ?? '澄み池');
+  const { field, level, pondId } = useLocalSearchParams<{ field: string; level: string; pondId: string }>();
+  const { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId } =
+    usePondChat(field ?? '', level ?? '澄み池', pondId ?? '');
+
+  const [showMembers, setShowMembers] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+
+  const handleLeave = () => {
+    setShowMenu(false);
+    Alert.alert(
+      'この池から退出しますか？',
+      '退出すると、この池のチャット履歴にアクセスできなくなります。',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '退出する',
+          style: 'destructive',
+          onPress: async () => {
+            const stored = await AsyncStorage.getItem('pond_ponds');
+            const ponds: Array<{ field: string }> = stored ? JSON.parse(stored) : [];
+            await AsyncStorage.setItem(
+              'pond_ponds',
+              JSON.stringify(ponds.filter((p) => p.field !== field))
+            );
+            router.replace('/(tabs)/ponds');
+          },
+        },
+      ]
+    );
+  };
 
   const renderMessage = useCallback(({ item }: { item: ChatMessage }) => {
     if (item.isMe) {
@@ -40,13 +70,12 @@ export default function PondChatScreen() {
     }
     return (
       <View style={styles.rowOther}>
-        <LinearGradient colors={LEVEL_GRADIENTS[item.level]} style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>{item.avatar}</Text>
-        </LinearGradient>
+        {/* AvatarSprite で表示 */}
+        <AvatarSprite presetId={item.avatarId ?? 'fishbowl'} size={34} />
         <View style={styles.bubbleOtherGroup}>
           <View style={styles.senderRow}>
             <Text style={styles.senderName}>{item.user}</Text>
-            <View style={[styles.levelPill, { backgroundColor: LEVEL_GRADIENTS[item.level][0] }]}>
+            <View style={styles.levelPill}>
               <Text style={styles.levelPillText}>{item.level}</Text>
             </View>
           </View>
@@ -78,14 +107,29 @@ export default function PondChatScreen() {
         </View>
         <View style={styles.headerInfo}>
           <Text style={styles.headerTitle}>{fieldLabel}</Text>
-          <View style={[styles.levelPill, { backgroundColor: LEVEL_GRADIENTS[levelKey][0] }]}>
-            <Text style={styles.levelPillText}>{levelKey}</Text>
+          <View style={[styles.levelChip, { backgroundColor: LEVEL_GRADIENTS[levelKey][0] }]}>
+            <Text style={styles.levelChipText}>{levelKey}</Text>
           </View>
         </View>
-        <View style={styles.memberBadge}>
-          <Ionicons name="people-outline" size={14} color={Colors.onSurfaceVariant} />
-          <Text style={styles.memberCount}>24</Text>
-        </View>
+
+        {/* メンバーボタン */}
+        <TouchableOpacity
+          style={styles.memberBadge}
+          onPress={() => setShowMembers(true)}
+          hitSlop={8}
+        >
+          <Ionicons name="people-outline" size={16} color={Colors.primary} />
+          <Text style={styles.memberCount}>{memberCount}</Text>
+        </TouchableOpacity>
+
+        {/* 三本線メニュー */}
+        <TouchableOpacity
+          style={styles.menuBtn}
+          onPress={() => setShowMenu(true)}
+          hitSlop={8}
+        >
+          <Ionicons name="ellipsis-vertical" size={20} color={Colors.onSurfaceVariant} />
+        </TouchableOpacity>
       </BlurView>
 
       {/* Messages */}
@@ -101,6 +145,7 @@ export default function PondChatScreen() {
 
       {/* Input bar */}
       <BlurView intensity={30} tint="light" style={styles.inputBar}>
+        <AvatarSprite presetId={myAvatarId} size={32} />
         <TextInput
           style={styles.input}
           value={text}
@@ -124,6 +169,59 @@ export default function PondChatScreen() {
           </LinearGradient>
         </TouchableOpacity>
       </BlurView>
+
+      {/* メンバーシート */}
+      {showMembers && (
+        <View style={styles.overlay}>
+          <TouchableOpacity style={styles.overlayBackdrop} activeOpacity={1} onPress={() => setShowMembers(false)} />
+          <View style={styles.memberSheet}>
+            <View style={styles.sheetHeader}>
+              <View style={styles.sheetHandle} />
+              <Text style={styles.sheetTitle}>
+                池のメンバー <Text style={styles.sheetTitleAccent}>{memberCount}人</Text>
+              </Text>
+              <TouchableOpacity onPress={() => setShowMembers(false)} style={styles.sheetClose}>
+                <Ionicons name="close" size={20} color={Colors.onSurfaceVariant} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.memberList}>
+              {members.map((m) => (
+                <View key={m.id} style={styles.memberRow}>
+                  <AvatarSprite presetId={m.avatarId} size={44} />
+                  <View style={styles.memberInfo}>
+                    <View style={styles.memberNameRow}>
+                      <Text style={styles.memberName}>{m.name}</Text>
+                      {m.isMe && (
+                        <View style={styles.meBadge}>
+                          <Text style={styles.meBadgeText}>あなた</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.memberLevel}>{m.level}</Text>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      )}
+
+      {/* 退出メニュー */}
+      {showMenu && (
+        <View style={styles.overlay}>
+          <TouchableOpacity style={styles.overlayBackdrop} activeOpacity={1} onPress={() => setShowMenu(false)} />
+          <View style={styles.menuSheet}>
+            <View style={{ alignSelf: 'center', marginTop: 8, width: 40, height: 4, borderRadius: Radius.full, backgroundColor: Colors.outlineVariant }} />
+            <TouchableOpacity style={styles.menuItem} onPress={handleLeave}>
+              <Ionicons name="exit-outline" size={22} color="#e05c7b" />
+              <Text style={styles.menuItemTextDanger}>この池から退出する</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.menuItem, styles.menuItemCancel]} onPress={() => setShowMenu(false)}>
+              <Text style={styles.menuItemTextCancel}>キャンセル</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -133,6 +231,7 @@ const styles = StyleSheet.create({
   blob: { position: 'absolute', borderRadius: Radius.full, opacity: 0.25 },
   blob1: { top: -40, right: -30, width: width * 0.5, height: width * 0.5, backgroundColor: Colors.primaryFixed },
   blob2: { bottom: 120, left: -40, width: width * 0.4, height: width * 0.4, backgroundColor: Colors.secondaryFixed },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -144,19 +243,52 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   headerIcon: { width: 36, height: 36, borderRadius: Radius.full, backgroundColor: Colors.primaryFixed, alignItems: 'center', justifyContent: 'center' },
-  headerInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
+  headerInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, flexWrap: 'wrap' },
   headerTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 17, color: Colors.onSurface },
-  memberBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: Colors.surfaceContainerLow, paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: Radius.full },
-  memberCount: { fontFamily: 'Inter_500Medium', fontSize: 12, color: Colors.onSurfaceVariant },
-  levelPill: { paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: Radius.full },
-  levelPillText: { fontFamily: 'Inter_600SemiBold', fontSize: 10, color: Colors.primary },
+
+  // レベルチップ（白文字で見やすく）
+  levelChip: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+  },
+  levelChipText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    color: '#fff',
+    letterSpacing: 0.3,
+  },
+
+  memberBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.primaryFixed,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+    borderRadius: Radius.full,
+  },
+  memberCount: { fontFamily: 'Inter_700Bold', fontSize: 13, color: Colors.primary },
+  menuBtn: { padding: 4 },
+
+  // メッセージ
   listContent: { paddingHorizontal: Spacing.md, paddingTop: Spacing.md, paddingBottom: Spacing.xl, gap: Spacing.md },
   rowOther: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm, maxWidth: width * 0.82 },
-  avatarCircle: { width: 34, height: 34, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  avatarText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 13, color: Colors.primary },
   bubbleOtherGroup: { flex: 1, gap: 3 },
   senderRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginLeft: 2 },
   senderName: { fontFamily: 'Inter_600SemiBold', fontSize: 11, color: Colors.onSurfaceVariant },
+  levelPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.primaryFixed,
+  },
+  levelPillText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 9,
+    color: Colors.primary,
+    letterSpacing: 0.2,
+  },
   timeOther: { fontFamily: 'Inter_400Regular', fontSize: 10, color: Colors.outlineVariant, marginLeft: 4 },
   rowMe: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'flex-end', gap: Spacing.xs },
   timeMe: { alignSelf: 'flex-end', marginBottom: 4 },
@@ -174,6 +306,8 @@ const styles = StyleSheet.create({
   },
   bubbleTextMe: { fontFamily: 'Inter_400Regular', fontSize: 14, color: '#fff', lineHeight: 20 },
   bubbleTextOther: { fontFamily: 'Inter_400Regular', fontSize: 14, color: Colors.onSurface, lineHeight: 20 },
+
+  // 入力バー
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -200,4 +334,97 @@ const styles = StyleSheet.create({
   sendBtn: { marginBottom: 1 },
   sendBtnDisabled: { opacity: 0.5 },
   sendBtnGradient: { width: 40, height: 40, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center' },
+
+  // オーバーレイ共通
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    zIndex: 100,
+  },
+  overlayBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+
+  // メンバーシート
+  memberSheet: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    maxHeight: '70%',
+    overflow: 'hidden',
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceContainerLow,
+  },
+  sheetHandle: {
+    position: 'absolute',
+    top: 8,
+    left: '50%',
+    marginLeft: -20,
+    width: 40,
+    height: 4,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.outlineVariant,
+  },
+  sheetTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 16,
+    color: Colors.onSurface,
+    marginTop: Spacing.sm,
+  },
+  sheetTitleAccent: { color: Colors.primary },
+  sheetClose: {
+    width: 32,
+    height: 32,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.surfaceContainerLow,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.sm,
+  },
+  memberList: { padding: Spacing.lg },
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceContainerLow,
+  },
+  memberInfo: { flex: 1 },
+  memberNameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  memberName: { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 15, color: Colors.onSurface },
+  meBadge: { backgroundColor: Colors.primaryFixed, paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: Radius.full },
+  meBadgeText: { fontFamily: 'Inter_600SemiBold', fontSize: 10, color: Colors.primary },
+  memberLevel: { fontFamily: 'Inter_400Regular', fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
+
+  // 退出メニュー
+  menuSheet: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    paddingBottom: 48,
+    overflow: 'hidden',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceContainerLow,
+  },
+  menuItemCancel: { justifyContent: 'center', borderBottomWidth: 0 },
+  menuItemTextDanger: { fontFamily: 'Inter_600SemiBold', fontSize: 16, color: '#e05c7b' },
+  menuItemTextCancel: { fontFamily: 'Inter_500Medium', fontSize: 16, color: Colors.onSurfaceVariant, textAlign: 'center', flex: 1 },
 });
