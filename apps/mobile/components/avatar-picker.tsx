@@ -185,14 +185,14 @@ const styles = StyleSheet.create({
     width: CELL_SIZE - 8,
     height: CELL_SIZE - 8,
     borderRadius: Radius.lg,
-    backgroundColor: Colors.surfaceContainerLow,
+    backgroundColor: '#CAE4FB',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: '#CAE4FB',
   },
   iconWrapActive: {
-    backgroundColor: Colors.primaryFixed,
+    backgroundColor: '#CAE4FB',
     borderColor: Colors.primary,
   },
   label: {
