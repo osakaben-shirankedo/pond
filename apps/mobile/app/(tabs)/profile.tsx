@@ -1,16 +1,22 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius, Spacing, Levels } from '@/constants/theme';
 import { FieldIcon } from '@/components/ui/field-icon';
+import { AvatarSprite } from '@/components/avatar-sprite';
+import { AvatarPicker } from '@/components/avatar-picker';
 import { FIELD_LABELS } from '@/models/field';
 import { useProfile } from '@/controllers/useProfile';
 
 const { width } = Dimensions.get('window');
 
 export default function ProfileScreen() {
-  const { ponds, STATS, SETTINGS_ITEMS, handleLogout, handleJoinPond } = useProfile();
+  const {
+    ponds, avatarId, pickerVisible,
+    openPicker, closePicker, selectAvatar,
+    STATS, SETTINGS_ITEMS, handleLogout, handleJoinPond,
+  } = useProfile();
 
   return (
     <View style={styles.container}>
@@ -20,13 +26,25 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Profile header */}
         <View style={styles.profileHeader}>
-          <LinearGradient colors={[Colors.primaryFixed, Colors.surfaceContainerHigh]} style={styles.avatarLarge}>
-            <MaterialCommunityIcons name="fishbowl-outline" size={44} color={Colors.primary} />
-          </LinearGradient>
+          <TouchableOpacity onPress={openPicker} activeOpacity={0.85} style={styles.avatarWrapper}>
+            <LinearGradient colors={[Colors.primaryFixed, Colors.surfaceContainerHigh]} style={styles.avatarLarge}>
+              <AvatarSprite presetId={avatarId} size={56} />
+            </LinearGradient>
+            <View style={styles.editBadge}>
+              <Ionicons name="pencil" size={11} color={Colors.onPrimary} />
+            </View>
+          </TouchableOpacity>
           <Text style={styles.displayName}>かわうそユーザー</Text>
           <Text style={styles.handle}>@pond_user</Text>
           <Text style={styles.bio}>学習するすべての人に、同じレベルの仲間を。</Text>
         </View>
+
+        <AvatarPicker
+          visible={pickerVisible}
+          selectedId={avatarId}
+          onSelect={selectAvatar}
+          onClose={closePicker}
+        />
 
         {/* Stats */}
         <BlurView intensity={20} tint="light" style={styles.statsCard}>
@@ -95,13 +113,29 @@ const styles = StyleSheet.create({
   blob2: { top: 300, left: -50, width: width * 0.5, height: width * 0.5, backgroundColor: Colors.secondaryFixed },
   content: { paddingTop: 72, paddingHorizontal: Spacing.lg, gap: Spacing.xl },
   profileHeader: { alignItems: 'center', gap: Spacing.sm, paddingTop: Spacing.lg },
+  avatarWrapper: {
+    position: 'relative',
+    marginBottom: Spacing.sm,
+  },
+  editBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 24,
+    height: 24,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.surface,
+  },
   avatarLarge: {
     width: 88,
     height: 88,
     borderRadius: Radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.sm,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,

@@ -2,7 +2,15 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "server",
   "main": "src/index.ts",
-  "compatibility_date": "2026-03-29"
+  "compatibility_date": "2026-03-29",
+
+  "d1_databases": [
+    {
+      "binding": "POND_DB",
+      "database_name": "pond-db",
+      "database_id": "8a83c0d3-64d0-4d5d-8653-7dd75053a777",
+    },
+  ],
   // "compatibility_flags": [
   //   "nodejs_compat"
   // ],
