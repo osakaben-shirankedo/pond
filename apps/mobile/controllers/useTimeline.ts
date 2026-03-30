@@ -3,6 +3,7 @@ import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { type Post, type Comment, SEED_POSTS } from '@/models/timeline';
+import { addNotification } from '@/models/notifications';
 import { type PondEntry } from '@/models/new-post';
 import { FIELD_LABELS } from '@/models/field';
 import { assignPondId } from '@/models/pond-instance';
@@ -86,7 +87,7 @@ export function useTimeline() {
   };
   const closeComments = () => setCommentPostId(null);
 
-  const addComment = (postId: string, content: string) => {
+  const addComment = async (postId: string, content: string) => {
     const newComment: Comment = {
       id: `comment-${Date.now()}`,
       postId,
@@ -102,6 +103,16 @@ export function useTimeline() {
           : p
       )
     );
+    // 自分以外の投稿へのコメントは通知
+    const targetPost = posts.find((p) => p.id === postId);
+    if (targetPost && targetPost.user !== 'あなた') {
+      await addNotification({
+        type: 'comment',
+        fromUser: 'あなた',
+        fromAvatarId: myAvatarId,
+        text: `${targetPost.user}の投稿にコメントしました`,
+      });
+    }
   };
 
   const openMenu = (postId: string) => setMenuPostId(postId);

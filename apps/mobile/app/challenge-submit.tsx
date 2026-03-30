@@ -17,6 +17,7 @@ import {
   type ChallengeParticipant, type MySubmissionResult, type SeedSubmission,
 } from '@/models/challenges';
 import { POND_POINTS_KEY } from '@/models/points';
+import { addNotification } from '@/models/notifications';
 
 const { width } = Dimensions.get('window');
 const SERVER_URL = 'http://localhost:8787';
@@ -99,10 +100,16 @@ export default function ChallengeSubmitScreen() {
       map[challengeId] = submissionResult;
       await AsyncStorage.setItem(CHALLENGE_SUBMISSION_KEY, JSON.stringify(map));
 
-      // 合格ならポイント+1
+      // 合格ならポイント+1 & 通知
       if (data.pass) {
         const pts = parseInt((await AsyncStorage.getItem(POND_POINTS_KEY)) ?? '0', 10);
         await AsyncStorage.setItem(POND_POINTS_KEY, String(pts + 1));
+        await addNotification({
+          type: 'challenge_pass',
+          fromUser: 'あなた',
+          fromAvatarId: myAvatarId,
+          text: `「${challenge?.title}」のチャレンジに成功しました！ +1ポイント`,
+        });
       }
 
       Animated.timing(resultAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
@@ -215,9 +222,19 @@ export default function ChallengeSubmitScreen() {
             {otherSubmissions.map((s) => (
               <View key={s.id} style={styles.submissionCard}>
                 <View style={styles.submissionHeader}>
-                  <AvatarSprite presetId={s.avatarId} size={36} />
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    onPress={() => router.push({ pathname: '/user-profile', params: { userName: s.user, avatarId: s.avatarId } })}
+                  >
+                    <AvatarSprite presetId={s.avatarId} size={36} />
+                  </TouchableOpacity>
                   <View style={styles.submissionMeta}>
-                    <Text style={styles.submissionUser}>{s.user}</Text>
+                    <TouchableOpacity
+                      activeOpacity={0.75}
+                      onPress={() => router.push({ pathname: '/user-profile', params: { userName: s.user, avatarId: s.avatarId } })}
+                    >
+                      <Text style={styles.submissionUser}>{s.user}</Text>
+                    </TouchableOpacity>
                     <Text style={styles.submissionTime}>{s.time}</Text>
                   </View>
                 </View>

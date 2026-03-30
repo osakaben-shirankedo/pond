@@ -10,6 +10,7 @@ import { CHALLENGES, CHALLENGE_JOINED_KEY, FIELD_ID_MAP, type Challenge } from '
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '@/services/api';
 import { authStorage } from '@/services/auth';
+import { clearPondUnread } from '@/models/notifications';
 
 let msgCounter = 100;
 
@@ -82,6 +83,9 @@ export function usePondChat(field: string, level: string, pondId: string) {
         (c) => joinedIds.includes(c.id) && (c.field === fieldKey || c.field === field)
       );
       setActiveChallenges(matched.sort((a, b) => b.daysLeft - a.daysLeft));
+
+      // 池を開いたので未読フラグをクリア
+      if (pondId) clearPondUnread(pondId);
     });
     authStorage.getUserId().then((id) => {
       if (id) setMyUserId(id);

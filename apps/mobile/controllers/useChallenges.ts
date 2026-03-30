@@ -9,6 +9,7 @@ import {
   FIELD_ID_MAP,
   type MySubmissionResult,
 } from '@/models/challenges';
+import { addNotification, markPondUnread } from '@/models/notifications';
 
 export function useChallenges() {
   const [joinedIds, setJoinedIds] = useState<string[]>([]);
@@ -72,8 +73,19 @@ export function useChallenges() {
           challengeTitle: challenge.title,
         };
         await AsyncStorage.setItem(key, JSON.stringify([...existing, cardMsg]));
+        // 池に未読フラグ
+        await markPondUnread(matchingPond.pondId);
       }
     }
+
+    // チャレンジ参加通知
+    const avatarStr2 = await AsyncStorage.getItem('pond_avatar');
+    await addNotification({
+      type: 'challenge_join',
+      fromUser: 'あなた',
+      fromAvatarId: avatarStr2 ?? 'fishbowl',
+      text: `「${challenge.title}」に参加しました`,
+    });
   }, [joinedIds]);
 
   const leaveChallenge = useCallback(async (id: string) => {

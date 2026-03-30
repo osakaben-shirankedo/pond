@@ -15,6 +15,7 @@ const { width } = Dimensions.get('window');
 export default function PondsScreen() {
   const {
     ponds,
+    unreadPondIds,
     LEVEL_ORDER,
     unexploredFields,
     handleAddPond,
@@ -70,6 +71,7 @@ export default function PondsScreen() {
                   onPress={() => handleOpenChat(pond.field, pond.level, pond.pondId)}
                   style={styles.pondCard}
                 >
+                  {unreadPondIds.includes(pond.pondId) && <View style={styles.pondUnreadDot} />}
                   <LinearGradient
                     colors={LEVEL_GRADIENTS[pond.level]}
                     start={{ x: 0, y: 0 }}
@@ -168,6 +170,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 20,
     elevation: 3,
+  },
+  pondUnreadDot: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 12,
+    height: 12,
+    borderRadius: Radius.full,
+    backgroundColor: '#e05c7b',
+    borderWidth: 2,
+    borderColor: '#fff',
+    zIndex: 10,
   },
   pondCardGradient: { padding: Spacing.xl, gap: Spacing.md },
   pondCardHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },

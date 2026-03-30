@@ -4,11 +4,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { router } from 'expo-router';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { LikeButton } from '@/components/like-button';
 import { AvatarSprite } from '@/components/avatar-sprite';
 import { CommentModal } from '@/components/CommentModal';
 import { useTimeline } from '@/controllers/useTimeline';
+import { useNotifications } from '@/controllers/useNotifications';
 import { LEVEL_COLORS, type Post } from '@/models/timeline';
 
 const { width } = Dimensions.get('window');
@@ -36,6 +38,7 @@ export default function TimelineScreen() {
     cancelEdit,
   } = useTimeline();
 
+  const { unreadCount } = useNotifications();
   const [editText, setEditText] = useState('');
   const tabBarHeight = useBottomTabBarHeight();
 
@@ -60,8 +63,9 @@ export default function TimelineScreen() {
         <Ionicons name="water" size={22} color={Colors.primary} />
         <Text style={styles.headerTitle}>Pond</Text>
         <View style={{ flex: 1 }} />
-        <TouchableOpacity style={styles.notifBtn}>
+        <TouchableOpacity style={styles.notifBtn} onPress={() => router.push('/notifications')}>
           <Ionicons name="notifications-outline" size={20} color={Colors.onSurfaceVariant} />
+          {unreadCount > 0 && <View style={styles.notifDot} />}
         </TouchableOpacity>
       </BlurView>
 
@@ -94,18 +98,30 @@ export default function TimelineScreen() {
         {filtered.map((post) => (
           <View key={post.id} style={styles.card}>
             <View style={styles.postHeader}>
-              {post.avatarId ? (
-                <AvatarSprite presetId={post.avatarId} size={44} />
-              ) : (
-                <LinearGradient
-                  colors={[Colors.primaryFixed, Colors.surfaceContainerHigh]}
-                  style={styles.avatarContainer}
-                >
-                  <Text style={styles.avatar}>{post.avatar}</Text>
-                </LinearGradient>
-              )}
+              <TouchableOpacity
+                activeOpacity={0.75}
+                disabled={post.user === 'あなた'}
+                onPress={() => router.push({ pathname: '/user-profile', params: { userName: post.user, avatarId: post.avatarId ?? 'fishbowl' } })}
+              >
+                {post.avatarId ? (
+                  <AvatarSprite presetId={post.avatarId} size={44} />
+                ) : (
+                  <LinearGradient
+                    colors={[Colors.primaryFixed, Colors.surfaceContainerHigh]}
+                    style={styles.avatarContainer}
+                  >
+                    <Text style={styles.avatar}>{post.avatar}</Text>
+                  </LinearGradient>
+                )}
+              </TouchableOpacity>
               <View style={styles.userInfo}>
-                <Text style={styles.userName}>{post.user}</Text>
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  disabled={post.user === 'あなた'}
+                  onPress={() => router.push({ pathname: '/user-profile', params: { userName: post.user, avatarId: post.avatarId ?? 'fishbowl' } })}
+                >
+                  <Text style={styles.userName}>{post.user}</Text>
+                </TouchableOpacity>
                 <View style={styles.badges}>
                   <View style={[styles.levelBadge, { backgroundColor: LEVEL_COLORS[post.level] ?? Colors.primaryFixed }]}>
                     <Text style={styles.levelBadgeText}>{post.level}</Text>
@@ -252,6 +268,17 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceContainerLow,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  notifDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 9,
+    height: 9,
+    borderRadius: Radius.full,
+    backgroundColor: '#e05c7b',
+    borderWidth: 1.5,
+    borderColor: Colors.surfaceContainerLow,
   },
   filterRow: { flexGrow: 0, paddingVertical: Spacing.sm },
   filterContent: { paddingHorizontal: Spacing.lg, gap: Spacing.sm },

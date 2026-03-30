@@ -1,24 +1,32 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { type PondEntry, LEVEL_ORDER } from '@/models/pond';
 import { FIELD_LABELS } from '@/models/field';
 import { assignPondId } from '@/models/pond-instance';
+import { POND_UNREAD_KEY } from '@/models/notifications';
 
 export function usePonds() {
   const [ponds, setPonds] = useState<PondEntry[]>([]);
+  const [unreadPondIds, setUnreadPondIds] = useState<string[]>([]);
 
-  useEffect(() => {
-    AsyncStorage.getItem('pond_ponds').then((stored) => {
-      if (!stored) return;
-      const raw: Array<{ field: string; level: string; pondId?: string }> = JSON.parse(stored);
-      const withId: PondEntry[] = raw.map((p) => ({
-        ...p,
-        pondId: p.pondId ?? assignPondId(p.field, p.level),
-      })) as PondEntry[];
-      setPonds(withId);
+  useFocusEffect(useCallback(() => {
+    Promise.all([
+      AsyncStorage.getItem('pond_ponds'),
+      AsyncStorage.getItem(POND_UNREAD_KEY),
+    ]).then(([stored, unreadStored]) => {
+      if (stored) {
+        const raw: Array<{ field: string; level: string; pondId?: string }> = JSON.parse(stored);
+        const withId: PondEntry[] = raw.map((p) => ({
+          ...p,
+          pondId: p.pondId ?? assignPondId(p.field, p.level),
+        })) as PondEntry[];
+        setPonds(withId);
+      }
+      setUnreadPondIds(unreadStored ? JSON.parse(unreadStored) : []);
     });
-  }, []);
+  }, []));
 
   const handleAddPond = () => router.push('/onboarding');
 
@@ -37,6 +45,7 @@ export function usePonds() {
 
   return {
     ponds,
+    unreadPondIds,
     LEVEL_ORDER,
     unexploredFields,
     handleAddPond,

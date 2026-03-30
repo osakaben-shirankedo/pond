@@ -1,7 +1,6 @@
 import {
   View, Text, StyleSheet, FlatList, TextInput,
   TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions, ScrollView,
-  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -15,6 +14,10 @@ import { AvatarSprite } from '@/components/avatar-sprite';
 import { LEVEL_GRADIENTS } from '@/models/pond';
 import { type ChatMessage } from '@/models/pond-chat';
 import { usePondChat } from '@/controllers/usePondChat';
+import { api } from '@/services/api';
+import { authStorage } from '@/services/auth';
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const { width } = Dimensions.get('window');
 
@@ -27,29 +30,24 @@ export default function PondChatScreen() {
   const [memberTab, setMemberTab] = useState<'members' | 'ranking'>('members');
   const [bannerExpanded, setBannerExpanded] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
 
-  const handleLeave = () => {
-    setShowMenu(false);
-    Alert.alert(
-      'この池から退出しますか？',
-      '退出すると、この池のチャット履歴にアクセスできなくなります。',
-      [
-        { text: 'キャンセル', style: 'cancel' },
-        {
-          text: '退出する',
-          style: 'destructive',
-          onPress: async () => {
-            const stored = await AsyncStorage.getItem('pond_ponds');
-            const ponds: Array<{ field: string }> = stored ? JSON.parse(stored) : [];
-            await AsyncStorage.setItem(
-              'pond_ponds',
-              JSON.stringify(ponds.filter((p) => p.field !== field))
-            );
-            router.replace('/(tabs)/ponds');
-          },
-        },
-      ]
+  const handleLeave = async () => {
+    if (pondId && UUID_REGEX.test(pondId)) {
+      const token = await authStorage.getToken();
+      if (token) {
+        await api.post(`/ike/${pondId}/leave`, {}, token);
+      }
+    }
+    const stored = await AsyncStorage.getItem('pond_ponds');
+    const ponds: Array<{ field: string; pondId?: string }> = stored ? JSON.parse(stored) : [];
+    await AsyncStorage.setItem(
+      'pond_ponds',
+      JSON.stringify(ponds.filter((p) => !(p.pondId === pondId || p.field === field)))
     );
+    setShowMenu(false);
+    setConfirmLeave(false);
+    router.replace('/(tabs)/ponds');
   };
 
   const renderMessage = useCallback(({ item }: { item: ChatMessage }) => {
@@ -324,16 +322,31 @@ export default function PondChatScreen() {
       {/* 退出メニュー */}
       {showMenu && (
         <View style={styles.overlay}>
-          <TouchableOpacity style={styles.overlayBackdrop} activeOpacity={1} onPress={() => setShowMenu(false)} />
+          <TouchableOpacity style={styles.overlayBackdrop} activeOpacity={1} onPress={() => { setShowMenu(false); setConfirmLeave(false); }} />
           <View style={styles.menuSheet}>
             <View style={{ alignSelf: 'center', marginTop: 8, width: 40, height: 4, borderRadius: Radius.full, backgroundColor: Colors.outlineVariant }} />
-            <TouchableOpacity style={styles.menuItem} onPress={handleLeave}>
-              <Ionicons name="exit-outline" size={22} color="#e05c7b" />
-              <Text style={styles.menuItemTextDanger}>この池から退出する</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.menuItem, styles.menuItemCancel]} onPress={() => setShowMenu(false)}>
-              <Text style={styles.menuItemTextCancel}>キャンセル</Text>
-            </TouchableOpacity>
+            {confirmLeave ? (
+              <>
+                <Text style={styles.menuConfirmText}>本当に退出しますか？</Text>
+                <TouchableOpacity style={styles.menuItem} onPress={handleLeave}>
+                  <Ionicons name="exit-outline" size={22} color="#e05c7b" />
+                  <Text style={styles.menuItemTextDanger}>退出する</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.menuItem, styles.menuItemCancel]} onPress={() => setConfirmLeave(false)}>
+                  <Text style={styles.menuItemTextCancel}>戻る</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <TouchableOpacity style={styles.menuItem} onPress={() => setConfirmLeave(true)}>
+                  <Ionicons name="exit-outline" size={22} color="#e05c7b" />
+                  <Text style={styles.menuItemTextDanger}>この池から退出する</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.menuItem, styles.menuItemCancel]} onPress={() => setShowMenu(false)}>
+                  <Text style={styles.menuItemTextCancel}>キャンセル</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
       )}
@@ -661,6 +674,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.surfaceContainerLow,
   },
+  menuConfirmText: { fontFamily: 'Inter_500Medium', fontSize: 14, color: Colors.onSurfaceVariant, textAlign: 'center', paddingVertical: Spacing.md },
   menuItemCancel: { justifyContent: 'center', borderBottomWidth: 0 },
   menuItemTextDanger: { fontFamily: 'Inter_600SemiBold', fontSize: 16, color: '#e05c7b' },
   menuItemTextCancel: { fontFamily: 'Inter_500Medium', fontSize: 16, color: Colors.onSurfaceVariant, textAlign: 'center', flex: 1 },

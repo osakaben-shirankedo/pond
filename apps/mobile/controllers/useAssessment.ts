@@ -126,6 +126,10 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
   };
 
   const handleEnter = () => {
+    setDiving(true);
+  };
+
+  const handleDiveComplete = () => {
     if (nextField) {
       router.replace({
         pathname: '/assessment',
@@ -135,12 +139,8 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
         },
       });
     } else {
-      setDiving(true);
+      router.replace('/(tabs)');
     }
-  };
-
-  const handleDiveComplete = () => {
-    router.replace('/(tabs)');
   };
 
   return {

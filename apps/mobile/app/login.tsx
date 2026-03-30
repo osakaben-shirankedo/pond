@@ -148,6 +148,11 @@ export default function LoginScreen() {
               <Text style={styles.signupLink}>新規登録</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Guest */}
+          <TouchableOpacity style={styles.guestBtn} activeOpacity={0.7} onPress={() => router.replace('/(tabs)')}>
+            <Text style={styles.guestBtnText}>ゲストで入る</Text>
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </LinearGradient>
@@ -286,5 +291,15 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
     fontSize: 13,
     color: Colors.primary,
+  },
+  guestBtn: {
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+  },
+  guestBtnText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    color: Colors.onSurfaceVariant,
+    textDecorationLine: 'underline',
   },
 });

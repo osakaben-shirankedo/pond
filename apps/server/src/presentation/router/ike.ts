@@ -151,6 +151,17 @@ router.post('/:ike_id/chat/:message_id/delete', async (c) => {
   }
 })
 
+router.post('/:ike_id/leave', async (c) => {
+  const db = drizzle(c.env.POND_DB)
+  const ikeRepo = new D1IkeRepository(db)
+  const ike = await ikeRepo.findById(c.req.param('ike_id'))
+  if (!ike) return c.json({ error: 'IKE_NOT_FOUND' }, 404)
+  const userId = c.get('userId')
+  if (!ike.member_ids.includes(userId)) return c.json({ error: 'NOT_A_MEMBER' }, 403)
+  await ikeRepo.update({ ...ike, member_ids: ike.member_ids.filter((id) => id !== userId) })
+  return c.json({ success: true })
+})
+
 router.post('/:ike_id/chat/:message_id/reply', async (c) => {
   const body = await c.req.json()
   const parsed = PostMessageInputSchema.safeParse(body)
