@@ -8,11 +8,16 @@ import {
   Platform,
   Dimensions,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { api } from '@/services/api';
+import { authStorage } from '@/services/auth';
 
 const { width } = Dimensions.get('window');
 
@@ -23,6 +28,60 @@ export default function SignupScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleSignup = async () => {
+    if (!name || !email || !password || !confirmPassword) {
+      Alert.alert('エラー', 'すべての項目を入力してください');
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert('エラー', 'パスワードが一致しません');
+      return;
+    }
+    if (password.length < 8) {
+      Alert.alert('エラー', 'パスワードは8文字以上にしてください');
+      return;
+    }
+
+    setLoading(true);
+
+    // 1. アカウント登録
+    const { error: registerError } = await api.post('/register', {
+      email,
+      password,
+      nickname: name,
+    });
+    if (registerError) {
+      setLoading(false);
+      Alert.alert(
+        '登録失敗',
+        registerError === 'EMAIL_ALREADY_EXISTS'
+          ? 'このメールアドレスは既に使われています'
+          : 'サーバーに接続できませんでした',
+      );
+      return;
+    }
+
+    // 2. ログインしてトークン取得
+    const { data: loginData, error: loginError } = await api.post<{ token: string }>('/login', {
+      email,
+      password,
+    });
+    if (loginError || !loginData) {
+      setLoading(false);
+      Alert.alert('エラー', 'ログインに失敗しました。再度ログインしてください');
+      router.replace('/login');
+      return;
+    }
+    await authStorage.setToken(loginData.token);
+
+    // 3. プロフィール作成（名前だけ）
+    await api.post('/register/profile', { name }, loginData.token);
+
+    setLoading(false);
+    router.replace('/onboarding');
+  };
 
   return (
     <LinearGradient
@@ -144,14 +203,17 @@ export default function SignupScreen() {
             </Text>
 
             {/* Signup button */}
-            <TouchableOpacity style={styles.signupBtn} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.signupBtn} activeOpacity={0.85} onPress={handleSignup} disabled={loading}>
               <LinearGradient
                 colors={[Colors.primaryContainer, Colors.primary]}
                 style={styles.signupBtnGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <Text style={styles.signupBtnText}>アカウントを作成</Text>
+                {loading
+                  ? <ActivityIndicator color={Colors.onPrimary} />
+                  : <Text style={styles.signupBtnText}>アカウントを作成</Text>
+                }
               </LinearGradient>
             </TouchableOpacity>
 
@@ -165,7 +227,7 @@ export default function SignupScreen() {
             {/* Back to login */}
             <View style={styles.loginRow}>
               <Text style={styles.loginText}>すでにアカウントをお持ちの方は</Text>
-              <TouchableOpacity hitSlop={8}>
+              <TouchableOpacity hitSlop={8} onPress={() => router.push('/login')}>
                 <Text style={styles.loginLink}>ログイン</Text>
               </TouchableOpacity>
             </View>

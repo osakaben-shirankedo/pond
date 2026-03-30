@@ -15,11 +15,14 @@ import {
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { router } from 'expo-router';
+import { authStorage } from '@/services/auth';
+import { api } from '@/services/api';
 
 SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
-  anchor: 'onboarding',
+  anchor: 'login',
 };
 
 export default function RootLayout() {
@@ -35,9 +38,32 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded) {
+    if (!fontsLoaded) return;
+
+    (async () => {
+      const token = await authStorage.getToken();
+      if (!token) {
+        SplashScreen.hideAsync();
+        router.replace('/login');
+        return;
+      }
+
+      const { error } = await api.get('/profile', token);
       SplashScreen.hideAsync();
-    }
+
+      if (error === 'NETWORK_ERROR') {
+        // サーバー未起動でもアプリを使えるようにタブへ
+        router.replace('/(tabs)');
+      } else if (error === 'PROFILE_NOT_FOUND') {
+        router.replace('/onboarding');
+      } else if (error) {
+        // トークン無効など
+        await authStorage.clear();
+        router.replace('/login');
+      } else {
+        router.replace('/(tabs)');
+      }
+    })();
   }, [fontsLoaded]);
 
   if (!fontsLoaded) return null;

@@ -7,11 +7,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   Dimensions,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { api } from '@/services/api';
+import { authStorage } from '@/services/auth';
 
 const { width } = Dimensions.get('window');
 
@@ -19,6 +24,31 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('エラー', 'メールアドレスとパスワードを入力してください');
+      return;
+    }
+    setLoading(true);
+    const { data, error } = await api.post<{ token: string }>('/login', { email, password });
+    if (error || !data) {
+      setLoading(false);
+      Alert.alert('ログイン失敗', error === 'INVALID_CREDENTIALS' ? 'メールアドレスまたはパスワードが違います' : 'サーバーに接続できませんでした');
+      return;
+    }
+    await authStorage.setToken(data.token);
+
+    // プロフィールが存在するか確認してナビゲート
+    const { error: profileError } = await api.get('/profile', data.token);
+    setLoading(false);
+    if (profileError === 'PROFILE_NOT_FOUND') {
+      router.replace('/onboarding');
+    } else {
+      router.replace('/(tabs)');
+    }
+  };
 
   return (
     <LinearGradient
@@ -90,14 +120,17 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           {/* Login button */}
-          <TouchableOpacity style={styles.loginBtn} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.loginBtn} activeOpacity={0.85} onPress={handleLogin} disabled={loading}>
             <LinearGradient
               colors={[Colors.primaryContainer, Colors.primary]}
               style={styles.loginBtnGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <Text style={styles.loginBtnText}>ログイン</Text>
+              {loading
+                ? <ActivityIndicator color={Colors.onPrimary} />
+                : <Text style={styles.loginBtnText}>ログイン</Text>
+              }
             </LinearGradient>
           </TouchableOpacity>
 
@@ -111,7 +144,7 @@ export default function LoginScreen() {
           {/* Sign up */}
           <View style={styles.signupRow}>
             <Text style={styles.signupText}>アカウントをお持ちでない方は</Text>
-            <TouchableOpacity hitSlop={8}>
+            <TouchableOpacity hitSlop={8} onPress={() => router.push('/signup')}>
               <Text style={styles.signupLink}>新規登録</Text>
             </TouchableOpacity>
           </View>

@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { cors } from 'hono/cors'
 import authRouter from './presentation/router/auth'
 import ikeRouter from './presentation/router/ike'
 import profileRouter from './presentation/router/profile'
@@ -16,6 +17,8 @@ export type Env = {
 }
 
 const app = new Hono<Env>()
+
+app.use('*', cors())
 
 app.get('/health', (c) => c.json({ status: 'ok' }))
 
