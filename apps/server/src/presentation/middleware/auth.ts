@@ -9,7 +9,7 @@ export const authMiddleware = createMiddleware<Env>(async (c, next) => {
   }
   const token = authHeader.slice(7)
   try {
-    const payload = await verify(token, c.env.JWT_SECRET)
+    const payload = await verify(token, c.env.JWT_SECRET, 'HS256')
     c.set('userId', payload.sub as string)
     await next()
   } catch {
