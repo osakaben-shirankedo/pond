@@ -81,8 +81,6 @@ export function useProfile() {
     SETTINGS_ITEMS,
     handleLogout,
     handleJoinPond,
-    displayName: profile?.name ?? 'ユーザー',
     handle: profile?.handle ? `@${profile.handle}` : '',
-    bio: profile?.bio ?? '',
   };
 }

@@ -36,7 +36,7 @@ export function buildStats(points: number) {
 }
 
 export const SETTINGS_ITEMS = [
-  { iconName: 'notifications-outline' as const, label: 'プッシュ通知' },
-  { iconName: 'lock-closed-outline' as const, label: 'プライバシー設定' },
-  { iconName: 'help-circle-outline' as const, label: 'ヘルプ' },
+  { iconName: 'notifications-outline' as const, label: 'プッシュ通知',   action: 'notifications' },
+  { iconName: 'lock-closed-outline'  as const, label: 'プライバシー設定', action: 'privacy' },
+  { iconName: 'help-circle-outline'  as const, label: 'ヘルプ',          action: 'help' },
 ];
