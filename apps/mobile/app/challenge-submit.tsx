@@ -9,21 +9,158 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { AvatarSprite } from '@/components/avatar-sprite';
+<<<<<<< HEAD
 import { CHALLENGES, type ChallengeParticipant } from '@/models/challenges';
 import { useChallengeSubmit } from '@/controllers/useChallengeSubmit';
+=======
+import {
+  CHALLENGES, SEED_PARTICIPANTS, SEED_SUBMISSIONS,
+  CHALLENGE_JOINED_KEY, CHALLENGE_PARTICIPATING_KEY, CHALLENGE_SUBMISSION_KEY,
+  type ChallengeParticipant, type MySubmissionResult, type SeedSubmission,
+} from '@/models/challenges';
+import { POND_POINTS_KEY } from '@/models/points';
+import { addNotification } from '@/models/notifications';
+>>>>>>> newcreate
 
 const { width } = Dimensions.get('window');
 
 export default function ChallengeSubmitScreen() {
-  const { challengeId, mode } = useLocalSearchParams<{ challengeId: string; mode?: string }>();
+  const { challengeId, mode, pondId } = useLocalSearchParams<{ challengeId: string; mode?: string; pondId?: string }>();
   const isTimelineMode = mode === 'timeline';
   const challenge = CHALLENGES.find((c) => c.id === challengeId);
 
+<<<<<<< HEAD
   const {
     answer, setAnswer, loading, result, showSubmissions, setShowSubmissions,
     participants, isParticipating, myAvatarId, resultAnim,
     toggleParticipate, handleSubmit, handleRetry, otherSubmissions,
   } = useChallengeSubmit(challengeId, challenge);
+=======
+  const [answer, setAnswer] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<MySubmissionResult | null>(null);
+  const [showSubmissions, setShowSubmissions] = useState(false);
+  const [participants, setParticipants] = useState<ChallengeParticipant[]>([]);
+  const [isParticipating, setIsParticipating] = useState(false);
+  const [myAvatarId, setMyAvatarId] = useState('fishbowl');
+  const resultAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!challengeId) return;
+    Promise.all([
+      AsyncStorage.getItem(CHALLENGE_PARTICIPATING_KEY),
+      AsyncStorage.getItem(CHALLENGE_SUBMISSION_KEY),
+      AsyncStorage.getItem('pond_avatar'),
+    ]).then(([partStr, subStr, avatarStr]) => {
+      const participatingIds: string[] = partStr ? JSON.parse(partStr) : [];
+      setIsParticipating(participatingIds.includes(challengeId));
+      if (subStr) {
+        const map: Record<string, MySubmissionResult> = JSON.parse(subStr);
+        if (map[challengeId]) {
+          setResult(map[challengeId]);
+          // 成功済みなら最初からみんなの回答を表示
+          if (map[challengeId].pass) setShowSubmissions(true);
+        }
+      }
+      if (avatarStr) setMyAvatarId(avatarStr);
+    });
+
+    const seeds = SEED_PARTICIPANTS[challengeId] ?? [];
+    setParticipants(seeds);
+  }, [challengeId]);
+
+  const toggleParticipate = async () => {
+    if (!challengeId) return;
+    const partStr = await AsyncStorage.getItem(CHALLENGE_PARTICIPATING_KEY);
+    const ids: string[] = partStr ? JSON.parse(partStr) : [];
+    const next = isParticipating ? ids.filter((i) => i !== challengeId) : [...ids, challengeId];
+    setIsParticipating(!isParticipating);
+    await AsyncStorage.setItem(CHALLENGE_PARTICIPATING_KEY, JSON.stringify(next));
+
+    // メンバーリスト更新
+    const seeds = SEED_PARTICIPANTS[challengeId] ?? [];
+    setParticipants(seeds);
+  };
+
+  const handleSubmit = async () => {
+    if (!answer.trim() || !challenge || !challengeId) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${SERVER_URL}/challenge/evaluate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          field: challenge.field,
+          challengeTitle: challenge.title,
+          challengeDescription: challenge.description,
+          answer: answer.trim(),
+          isSubjective: challenge.isSubjective,
+        }),
+      });
+      const data = await res.json() as { pass: boolean; score?: number; comment: string };
+      const submissionResult: MySubmissionResult = {
+        answer: answer.trim(),
+        pass: data.pass,
+        score: data.score,
+        comment: data.comment,
+      };
+      setResult(submissionResult);
+
+      // 保存
+      const subStr = await AsyncStorage.getItem(CHALLENGE_SUBMISSION_KEY);
+      const map: Record<string, MySubmissionResult> = subStr ? JSON.parse(subStr) : {};
+      map[challengeId] = submissionResult;
+      await AsyncStorage.setItem(CHALLENGE_SUBMISSION_KEY, JSON.stringify(map));
+
+      // 合格ならポイント+1 & 通知
+      if (data.pass) {
+        const pts = parseInt((await AsyncStorage.getItem(POND_POINTS_KEY)) ?? '0', 10);
+        await AsyncStorage.setItem(POND_POINTS_KEY, String(pts + 1));
+        await addNotification({
+          type: 'challenge_pass',
+          fromUser: 'あなた',
+          fromAvatarId: myAvatarId,
+          text: `「${challenge?.title}」のチャレンジに成功しました！ +1ポイント`,
+        });
+      }
+
+      Animated.timing(resultAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+    } catch {
+      setResult({ answer: answer.trim(), pass: false, comment: 'サーバーに接続できませんでした。再度お試しください。' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRetry = () => {
+    setResult(null);
+    setAnswer('');
+    resultAnim.setValue(0);
+  };
+>>>>>>> newcreate
+
+  const [confirmLeave, setConfirmLeave] = useState(false);
+
+  const handleGroupLeave = async () => {
+    if (!challengeId) return;
+    // JOINED から削除
+    const joinedStr = await AsyncStorage.getItem(CHALLENGE_JOINED_KEY);
+    const joined: string[] = joinedStr ? JSON.parse(joinedStr) : [];
+    await AsyncStorage.setItem(CHALLENGE_JOINED_KEY, JSON.stringify(joined.filter((id) => id !== challengeId)));
+    // PARTICIPATING から削除
+    const partStr = await AsyncStorage.getItem(CHALLENGE_PARTICIPATING_KEY);
+    const parts: string[] = partStr ? JSON.parse(partStr) : [];
+    await AsyncStorage.setItem(CHALLENGE_PARTICIPATING_KEY, JSON.stringify(parts.filter((id) => id !== challengeId)));
+    // 池のチャットからチャレンジカードを削除
+    if (pondId) {
+      const key = `challenge_chat_${pondId}`;
+      const chatStr = await AsyncStorage.getItem(key);
+      const msgs: Array<{ challengeId?: string }> = chatStr ? JSON.parse(chatStr) : [];
+      await AsyncStorage.setItem(key, JSON.stringify(msgs.filter((m) => m.challengeId !== challengeId)));
+    }
+    setConfirmLeave(false);
+    router.back();
+  };
 
   if (!challenge) return null;
 
@@ -48,6 +185,12 @@ export default function ChallengeSubmitScreen() {
           <View style={styles.aiTag}>
             <Text style={styles.aiTagText}>AI採点</Text>
           </View>
+        )}
+        {!isTimelineMode && !result && (
+          <TouchableOpacity onPress={() => setConfirmLeave(true)} style={styles.leaveBtn} hitSlop={8}>
+            <Ionicons name="exit-outline" size={18} color="#e05c7b" />
+            <Text style={styles.leaveBtnText}>池で辞退</Text>
+          </TouchableOpacity>
         )}
       </BlurView>
 
@@ -75,13 +218,13 @@ export default function ChallengeSubmitScreen() {
         {/* チーム参加状況 */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>池のチームメンバー</Text>
-            <TouchableOpacity onPress={toggleParticipate} style={[styles.participateToggle, isParticipating && styles.participateToggleActive]}>
+            <Text style={styles.sectionTitle}>参加した池のチームメンバー</Text>
+            <View style={[styles.participateToggle, isParticipating && styles.participateToggleActive]}>
               <Ionicons name={isParticipating ? 'checkmark-circle' : 'add-circle-outline'} size={16} color={isParticipating ? Colors.primary : Colors.onSurfaceVariant} />
               <Text style={[styles.participateToggleText, isParticipating && styles.participateToggleTextActive]}>
-                {isParticipating ? '挑戦中' : '挑戦する'}
+                {isParticipating ? '挑戦中' : '未参加'}
               </Text>
-            </TouchableOpacity>
+            </View>
           </View>
           {allParticipants.length === 0 ? (
             <Text style={styles.emptyText}>まだ挑戦者がいません</Text>
@@ -254,6 +397,29 @@ export default function ChallengeSubmitScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* 辞退確認オーバーレイ */}
+      {confirmLeave && (
+        <View style={styles.overlay}>
+          <TouchableOpacity style={styles.overlayBackdrop} activeOpacity={1} onPress={() => setConfirmLeave(false)} />
+          <View style={styles.leaveSheet}>
+            <View style={styles.leaveSheetHandle} />
+            <Ionicons name="warning-outline" size={36} color="#e05c7b" style={{ alignSelf: 'center', marginTop: Spacing.md }} />
+            <Text style={styles.leaveSheetTitle}>池でチャレンジを辞退する</Text>
+            <Text style={styles.leaveSheetDesc}>
+              このチャレンジの参加状態と池のチャット投稿が削除されます。{'\n'}
+              池のメンバー全員の参加状態がリセットされます。
+            </Text>
+            <TouchableOpacity onPress={handleGroupLeave} style={styles.leaveDangerBtn}>
+              <Ionicons name="exit-outline" size={18} color="#fff" />
+              <Text style={styles.leaveDangerBtnText}>辞退する</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setConfirmLeave(false)} style={styles.leaveCancelBtn}>
+              <Text style={styles.leaveCancelBtnText}>キャンセル</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -276,6 +442,25 @@ const styles = StyleSheet.create({
   headerTitle: { flex: 1, fontFamily: 'PlusJakartaSans_700Bold', fontSize: 17, color: Colors.onSurface },
   aiTag: { backgroundColor: `${Colors.secondary}33`, paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: Radius.full },
   aiTagText: { fontFamily: 'Inter_600SemiBold', fontSize: 11, color: Colors.secondary },
+  leaveBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: Spacing.sm, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: '#fde8ed' },
+  leaveBtnText: { fontFamily: 'Inter_600SemiBold', fontSize: 12, color: '#e05c7b' },
+  overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end', zIndex: 200 },
+  overlayBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
+  leaveSheet: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    padding: Spacing.xl,
+    paddingBottom: 48,
+    gap: Spacing.md,
+  },
+  leaveSheetHandle: { width: 40, height: 4, borderRadius: Radius.full, backgroundColor: Colors.outlineVariant, alignSelf: 'center' },
+  leaveSheetTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 18, color: Colors.onSurface, textAlign: 'center', marginTop: Spacing.sm },
+  leaveSheetDesc: { fontFamily: 'Inter_400Regular', fontSize: 13, color: Colors.onSurfaceVariant, textAlign: 'center', lineHeight: 20 },
+  leaveDangerBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, backgroundColor: '#e05c7b', paddingVertical: 14, borderRadius: Radius.full, marginTop: Spacing.sm },
+  leaveDangerBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: '#fff' },
+  leaveCancelBtn: { alignItems: 'center', paddingVertical: 12 },
+  leaveCancelBtnText: { fontFamily: 'Inter_500Medium', fontSize: 15, color: Colors.onSurfaceVariant },
   content: { padding: Spacing.lg, gap: Spacing.xl },
   challengeCard: {
     backgroundColor: Colors.surfaceContainerLowest,

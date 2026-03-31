@@ -8,7 +8,12 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
+<<<<<<< HEAD
 import { Colors, Radius, Spacing } from '@/constants/theme';
+=======
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Colors, Radius, Spacing, LEVEL_CHAT_BG } from '@/constants/theme';
+>>>>>>> newcreate
 import { FieldIcon } from '@/components/ui/field-icon';
 import { AvatarSprite } from '@/components/avatar-sprite';
 import { LEVEL_GRADIENTS } from '@/models/pond';
@@ -19,6 +24,7 @@ const { width } = Dimensions.get('window');
 
 export default function PondChatScreen() {
   const { field, level, pondId } = useLocalSearchParams<{ field: string; level: string; pondId: string }>();
+<<<<<<< HEAD
   const {
     fieldLabel, levelKey, messages, text, setText, listRef,
     handleSend, handleDelete, startEdit, startReply, cancelAction,
@@ -27,9 +33,13 @@ export default function PondChatScreen() {
     ranking, activeChallenges, isStagnant, callAiFish, aiFishLoading,
     leavePond,
   } = usePondChat(field ?? '', level ?? '澄み池', pondId ?? '');
+=======
+  const { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId, ranking, activeChallenges, pastChallenges, isStagnant, callAiFish, aiFishLoading } =
+    usePondChat(field ?? '', level ?? '澄み池', pondId ?? '');
+>>>>>>> newcreate
 
   const [showMembers, setShowMembers] = useState(false);
-  const [memberTab, setMemberTab] = useState<'members' | 'ranking'>('members');
+  const [memberTab, setMemberTab] = useState<'members' | 'ranking' | 'history'>('members');
   const [bannerExpanded, setBannerExpanded] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -89,13 +99,22 @@ export default function PondChatScreen() {
               {item.challengeTitle}にみんなで挑戦しましょう！
             </Text>
             <TouchableOpacity
-              onPress={() => router.push({ pathname: '/challenge-submit', params: { challengeId: item.challengeId } })}
+              onPress={() => router.push({ pathname: '/challenge-submit', params: { challengeId: item.challengeId, pondId: pondId ?? '' } })}
               activeOpacity={0.85}
               style={styles.challengeCardMsgBtn}
             >
               <Text style={styles.challengeCardMsgBtnText}>参加する</Text>
             </TouchableOpacity>
           </LinearGradient>
+        </View>
+      );
+    }
+
+    // システムメッセージ
+    if (item.type === 'system') {
+      return (
+        <View style={styles.systemMsgRow}>
+          <Text style={styles.systemMsgText}>{item.content}</Text>
         </View>
       );
     }
@@ -152,6 +171,7 @@ export default function PondChatScreen() {
       );
     }
     return (
+<<<<<<< HEAD
       <TouchableOpacity activeOpacity={0.8} onLongPress={() => handleMsgLongPress(item)}>
         {replySource && (
           <View style={styles.replyPreviewOther}>
@@ -166,6 +186,20 @@ export default function PondChatScreen() {
               <View style={styles.levelPill}>
                 <Text style={styles.levelPillText}>{item.level}</Text>
               </View>
+=======
+      <View style={styles.rowOther}>
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={() => router.push({ pathname: '/user-profile', params: { userName: item.user, avatarId: item.avatarId ?? 'fishbowl' } })}
+        >
+          <AvatarSprite presetId={item.avatarId ?? 'fishbowl'} size={34} />
+        </TouchableOpacity>
+        <View style={styles.bubbleOtherGroup}>
+          <View style={styles.senderRow}>
+            <Text style={styles.senderName}>{item.user}</Text>
+            <View style={styles.levelPill}>
+              <Text style={styles.levelPillText}>{item.level}</Text>
+>>>>>>> newcreate
             </View>
             <View style={[styles.bubble, styles.bubbleOther]}>
               <Text style={styles.bubbleTextOther}>{item.content}</Text>
@@ -179,7 +213,7 @@ export default function PondChatScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: LEVEL_CHAT_BG[levelKey] ?? Colors.surface }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={0}
     >
@@ -216,7 +250,7 @@ export default function PondChatScreen() {
           <TouchableOpacity
             style={styles.challengeBannerRow}
             activeOpacity={0.85}
-            onPress={() => router.push({ pathname: '/challenge-submit', params: { challengeId: activeChallenges[0].id } })}
+            onPress={() => router.push({ pathname: '/challenge-submit', params: { challengeId: activeChallenges[0].id, pondId: pondId ?? '' } })}
           >
             <Ionicons name="flash" size={14} color={Colors.primary} />
             <Text style={styles.challengeBannerText} numberOfLines={1}>
@@ -352,11 +386,27 @@ export default function PondChatScreen() {
               >
                 <Text style={[styles.tabText, memberTab === 'ranking' && styles.tabTextActive]}>ランキング</Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, memberTab === 'history' && styles.tabActive]}
+                onPress={() => setMemberTab('history')}
+              >
+                <Text style={[styles.tabText, memberTab === 'history' && styles.tabTextActive]}>過去の挑戦</Text>
+              </TouchableOpacity>
             </View>
             {memberTab === 'members' ? (
               <ScrollView showsVerticalScrollIndicator={false} style={styles.memberList}>
                 {members.map((m) => (
-                  <View key={m.id} style={styles.memberRow}>
+                  <TouchableOpacity
+                    key={m.id}
+                    style={styles.memberRow}
+                    activeOpacity={m.isMe ? 1 : 0.75}
+                    onPress={() => {
+                      if (!m.isMe) {
+                        setShowMembers(false);
+                        router.push({ pathname: '/user-profile', params: { userName: m.name, avatarId: m.avatarId } });
+                      }
+                    }}
+                  >
                     <AvatarSprite presetId={m.avatarId} size={44} />
                     <View style={styles.memberInfo}>
                       <View style={styles.memberNameRow}>
@@ -369,13 +419,24 @@ export default function PondChatScreen() {
                       </View>
                       <Text style={styles.memberLevel}>{m.level}</Text>
                     </View>
-                  </View>
+                    {!m.isMe && <Ionicons name="chevron-forward" size={16} color={Colors.outlineVariant} />}
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
-            ) : (
+            ) : memberTab === 'ranking' ? (
               <ScrollView showsVerticalScrollIndicator={false} style={styles.memberList}>
                 {ranking.map((m) => (
-                  <View key={m.id} style={styles.rankRow}>
+                  <TouchableOpacity
+                    key={m.id}
+                    style={styles.rankRow}
+                    activeOpacity={m.isMe ? 1 : 0.75}
+                    onPress={() => {
+                      if (!m.isMe) {
+                        setShowMembers(false);
+                        router.push({ pathname: '/user-profile', params: { userName: m.name, avatarId: m.avatarId } });
+                      }
+                    }}
+                  >
                     <Text style={[styles.rankNum, m.rank === 1 && styles.rankGold, m.rank === 2 && styles.rankSilver, m.rank === 3 && styles.rankBronze]}>
                       {m.rank}
                     </Text>
@@ -391,7 +452,29 @@ export default function PondChatScreen() {
                       </View>
                     </View>
                     <Text style={styles.rankPoints}>{m.points.toLocaleString()} pt</Text>
-                  </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false} style={styles.memberList}>
+                {pastChallenges.length === 0 ? (
+                  <Text style={styles.historyEmpty}>まだ挑戦したチャレンジはありません</Text>
+                ) : pastChallenges.map((ch) => (
+                  <TouchableOpacity
+                    key={ch.id}
+                    style={styles.historyItem}
+                    activeOpacity={0.8}
+                    onPress={() => { setShowMembers(false); router.push({ pathname: '/challenge-submit', params: { challengeId: ch.id, mode: 'timeline', pondId: pondId ?? '' } }); }}
+                  >
+                    <View style={styles.historyIconWrap}>
+                      <Ionicons name="trophy-outline" size={18} color={Colors.primary} />
+                    </View>
+                    <View style={styles.historyInfo}>
+                      <Text style={styles.historyTitle} numberOfLines={1}>{ch.title}</Text>
+                      <Text style={styles.historyMeta}>{ch.field} · {ch.participants}人参加</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={Colors.outlineVariant} />
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
             )}
@@ -696,6 +779,31 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 
+  // 過去チャレンジ履歴
+  historyEmpty: { fontFamily: 'Inter_400Regular', fontSize: 13, color: Colors.onSurfaceVariant, textAlign: 'center', paddingVertical: Spacing.xl },
+  historyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceContainerLow,
+  },
+  historyIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.primaryFixed,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  historyInfo: { flex: 1 },
+  historyTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: Colors.onSurface },
+  historyMeta: { fontFamily: 'Inter_400Regular', fontSize: 11, color: Colors.onSurfaceVariant, marginTop: 2 },
+
+  // システムメッセージ
+  systemMsgRow: { alignItems: 'center', marginVertical: 8 },
+  systemMsgText: { fontFamily: 'Inter_400Regular', fontSize: 12, color: Colors.onSurfaceVariant, backgroundColor: `${Colors.surfaceContainerHigh}cc`, paddingHorizontal: 12, paddingVertical: 4, borderRadius: Radius.full },
   // AI魚
   aiFishRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm, maxWidth: width * 0.82, marginVertical: 2 },
   aiFishAvatar: { width: 34, height: 34, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center' },
