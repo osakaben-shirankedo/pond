@@ -52,6 +52,7 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
   const [judgedLevel, setJudgedLevel] = useState<LevelKey | null>(null);
   const [purposeSelected, setPurposeSelected] = useState(false);
   const [diving, setDiving] = useState(false);
+  const [assignedPondId, setAssignedPondId] = useState<string | null>(null);
 
   const scrollRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -122,6 +123,7 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
     await AsyncStorage.setItem('pond_ponds', JSON.stringify(merged));
     await AsyncStorage.setItem('pond_onboarding_done', 'true');
 
+    setAssignedPondId(pondId);
     setPurposeSelected(true);
   };
 
@@ -136,6 +138,15 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
         params: {
           field: nextField,
           queue: remainingQueue.slice(1).join(','),
+        },
+      });
+    } else if (assignedPondId && judgedLevel) {
+      router.replace({
+        pathname: '/pond-chat',
+        params: {
+          field: field ?? 'programming',
+          level: judgedLevel,
+          pondId: assignedPondId,
         },
       });
     } else {
