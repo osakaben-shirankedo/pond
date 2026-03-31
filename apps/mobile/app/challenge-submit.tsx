@@ -43,12 +43,15 @@ export default function ChallengeSubmitScreen() {
       AsyncStorage.getItem(CHALLENGE_SUBMISSION_KEY),
       AsyncStorage.getItem('pond_avatar'),
     ]).then(([partStr, subStr, avatarStr]) => {
-      // JOINED と PARTICIPATING を両方チェックして統一
       const participatingIds: string[] = partStr ? JSON.parse(partStr) : [];
       setIsParticipating(participatingIds.includes(challengeId));
       if (subStr) {
         const map: Record<string, MySubmissionResult> = JSON.parse(subStr);
-        if (map[challengeId]) setResult(map[challengeId]);
+        if (map[challengeId]) {
+          setResult(map[challengeId]);
+          // 成功済みなら最初からみんなの回答を表示
+          if (map[challengeId].pass) setShowSubmissions(true);
+        }
       }
       if (avatarStr) setMyAvatarId(avatarStr);
     });
@@ -177,13 +180,13 @@ export default function ChallengeSubmitScreen() {
         {/* チーム参加状況 */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>池のチームメンバー</Text>
-            <TouchableOpacity onPress={toggleParticipate} style={[styles.participateToggle, isParticipating && styles.participateToggleActive]}>
+            <Text style={styles.sectionTitle}>参加した池のチームメンバー</Text>
+            <View style={[styles.participateToggle, isParticipating && styles.participateToggleActive]}>
               <Ionicons name={isParticipating ? 'checkmark-circle' : 'add-circle-outline'} size={16} color={isParticipating ? Colors.primary : Colors.onSurfaceVariant} />
               <Text style={[styles.participateToggleText, isParticipating && styles.participateToggleTextActive]}>
-                {isParticipating ? '挑戦中' : '挑戦する'}
+                {isParticipating ? '挑戦中' : '未参加'}
               </Text>
-            </TouchableOpacity>
+            </View>
           </View>
           {allParticipants.length === 0 ? (
             <Text style={styles.emptyText}>まだ挑戦者がいません</Text>

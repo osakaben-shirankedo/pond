@@ -141,7 +141,7 @@ export default function ChallengesScreen() {
                     style={styles.submitBtnGradient}
                   >
                     <Ionicons name="list" size={14} color="#fff" />
-                    <Text style={styles.submitBtnText}>タイムラインを見る</Text>
+                    <Text style={styles.submitBtnText}>みんなの回答</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
