@@ -322,7 +322,17 @@ export default function PondChatScreen() {
             {memberTab === 'members' ? (
               <ScrollView showsVerticalScrollIndicator={false} style={styles.memberList}>
                 {members.map((m) => (
-                  <View key={m.id} style={styles.memberRow}>
+                  <TouchableOpacity
+                    key={m.id}
+                    style={styles.memberRow}
+                    activeOpacity={m.isMe ? 1 : 0.75}
+                    onPress={() => {
+                      if (!m.isMe) {
+                        setShowMembers(false);
+                        router.push({ pathname: '/user-profile', params: { userName: m.name, avatarId: m.avatarId } });
+                      }
+                    }}
+                  >
                     <AvatarSprite presetId={m.avatarId} size={44} />
                     <View style={styles.memberInfo}>
                       <View style={styles.memberNameRow}>
@@ -335,13 +345,24 @@ export default function PondChatScreen() {
                       </View>
                       <Text style={styles.memberLevel}>{m.level}</Text>
                     </View>
-                  </View>
+                    {!m.isMe && <Ionicons name="chevron-forward" size={16} color={Colors.outlineVariant} />}
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
             ) : memberTab === 'ranking' ? (
               <ScrollView showsVerticalScrollIndicator={false} style={styles.memberList}>
                 {ranking.map((m) => (
-                  <View key={m.id} style={styles.rankRow}>
+                  <TouchableOpacity
+                    key={m.id}
+                    style={styles.rankRow}
+                    activeOpacity={m.isMe ? 1 : 0.75}
+                    onPress={() => {
+                      if (!m.isMe) {
+                        setShowMembers(false);
+                        router.push({ pathname: '/user-profile', params: { userName: m.name, avatarId: m.avatarId } });
+                      }
+                    }}
+                  >
                     <Text style={[styles.rankNum, m.rank === 1 && styles.rankGold, m.rank === 2 && styles.rankSilver, m.rank === 3 && styles.rankBronze]}>
                       {m.rank}
                     </Text>
@@ -357,7 +378,7 @@ export default function PondChatScreen() {
                       </View>
                     </View>
                     <Text style={styles.rankPoints}>{m.points.toLocaleString()} pt</Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
             ) : (
