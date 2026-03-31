@@ -52,6 +52,44 @@ export default function ChallengesScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {tab === 'active' && (() => {
+          const joining = challenges.filter((c) => c.joined && !c.passed);
+          return joining.length > 0 ? (
+            <View style={styles.joiningSection}>
+              <View style={styles.joiningSectionHeader}>
+                <Ionicons name="flash" size={14} color={Colors.primary} />
+                <Text style={styles.joiningSectionTitle}>参加中のチャレンジ</Text>
+                <View style={styles.joiningSectionBadge}>
+                  <Text style={styles.joiningSectionBadgeText}>{joining.length}</Text>
+                </View>
+              </View>
+              {joining.map((ch) => (
+                <View key={ch.id} style={styles.joiningItem}>
+                  <View style={styles.joiningItemInfo}>
+                    <Text style={styles.joiningItemTitle} numberOfLines={1}>{ch.title}</Text>
+                    <Text style={styles.joiningItemMeta}>{ch.field} · 残り{ch.daysLeft}日</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => router.push({ pathname: '/challenge-submit', params: { challengeId: ch.id } })}
+                    style={styles.joiningSubmitBtn}
+                    activeOpacity={0.85}
+                  >
+                    <LinearGradient
+                      colors={[Colors.primary, Colors.primaryContainer]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.joiningSubmitBtnGradient}
+                    >
+                      <Ionicons name="send" size={13} color="#fff" />
+                      <Text style={styles.joiningSubmitBtnText}>提出</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          ) : null;
+        })()}
+
         {tab === 'active' && (
           <LinearGradient
             colors={[Colors.primary, Colors.secondary]}
@@ -153,8 +191,8 @@ export default function ChallengesScreen() {
                   activeOpacity={0.85}
                   style={styles.joinedBtn}
                 >
-                  <Ionicons name="checkmark-circle" size={16} color={Colors.primary} />
-                  <Text style={styles.joinedBtnText}>参加中</Text>
+                  <Ionicons name="close-circle-outline" size={16} color="#e05c7b" />
+                  <Text style={styles.leaveBtnText}>参加をやめる</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => router.push({ pathname: '/challenge-submit', params: { challengeId: ch.id } })}
@@ -295,11 +333,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.xs,
-    backgroundColor: Colors.surfaceContainerLow,
+    backgroundColor: '#fde8ed',
     paddingVertical: 14,
     borderRadius: Radius.full,
   },
-  joinedBtnText: { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 15, color: Colors.primary },
+  leaveBtnText: { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 15, color: '#e05c7b' },
+  joiningSection: {
+    backgroundColor: Colors.surfaceContainerLowest,
+    borderRadius: Radius.xl,
+    padding: Spacing.lg,
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: `${Colors.primary}22`,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  joiningSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: 2 },
+  joiningSectionTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: Colors.primary, flex: 1 },
+  joiningSectionBadge: { backgroundColor: Colors.primaryFixed, borderRadius: Radius.full, paddingHorizontal: 8, paddingVertical: 2 },
+  joiningSectionBadgeText: { fontFamily: 'Inter_700Bold', fontSize: 11, color: Colors.primary },
+  joiningItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.sm, borderTopWidth: 1, borderTopColor: Colors.surfaceContainerLow },
+  joiningItemInfo: { flex: 1 },
+  joiningItemTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: Colors.onSurface },
+  joiningItemMeta: { fontFamily: 'Inter_400Regular', fontSize: 11, color: Colors.onSurfaceVariant, marginTop: 2 },
+  joiningSubmitBtn: { borderRadius: Radius.full, overflow: 'hidden' },
+  joiningSubmitBtnGradient: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: Spacing.md, paddingVertical: 8, borderRadius: Radius.full },
+  joiningSubmitBtnText: { fontFamily: 'Inter_700Bold', fontSize: 13, color: '#fff' },
   submitBtn: { flex: 1, borderRadius: Radius.full, overflow: 'hidden' },
   submitBtnGradient: {
     paddingVertical: 14,

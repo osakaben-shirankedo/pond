@@ -71,7 +71,7 @@ export default function PondChatScreen() {
               {item.challengeTitle}にみんなで挑戦しましょう！
             </Text>
             <TouchableOpacity
-              onPress={() => router.push({ pathname: '/challenge-submit', params: { challengeId: item.challengeId } })}
+              onPress={() => router.push({ pathname: '/challenge-submit', params: { challengeId: item.challengeId, pondId: pondId ?? '' } })}
               activeOpacity={0.85}
               style={styles.challengeCardMsgBtn}
             >
@@ -193,7 +193,7 @@ export default function PondChatScreen() {
           <TouchableOpacity
             style={styles.challengeBannerRow}
             activeOpacity={0.85}
-            onPress={() => router.push({ pathname: '/challenge-submit', params: { challengeId: activeChallenges[0].id } })}
+            onPress={() => router.push({ pathname: '/challenge-submit', params: { challengeId: activeChallenges[0].id, pondId: pondId ?? '' } })}
           >
             <Ionicons name="flash" size={14} color={Colors.primary} />
             <Text style={styles.challengeBannerText} numberOfLines={1}>
@@ -369,7 +369,7 @@ export default function PondChatScreen() {
                     key={ch.id}
                     style={styles.historyItem}
                     activeOpacity={0.8}
-                    onPress={() => { setShowMembers(false); router.push({ pathname: '/challenge-submit', params: { challengeId: ch.id, mode: 'timeline' } }); }}
+                    onPress={() => { setShowMembers(false); router.push({ pathname: '/challenge-submit', params: { challengeId: ch.id, mode: 'timeline', pondId: pondId ?? '' } }); }}
                   >
                     <View style={styles.historyIconWrap}>
                       <Ionicons name="trophy-outline" size={18} color={Colors.primary} />
