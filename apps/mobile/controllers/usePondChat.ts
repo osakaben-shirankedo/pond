@@ -35,6 +35,7 @@ function serverMsgToChatMsg(msg: ServerMessage, myUserId: string, level: LevelKe
     content: msg.content,
     time: new Date(msg.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
     isMe,
+    replyToId: msg.reply_to_id ?? undefined,
   };
 }
 
@@ -54,6 +55,8 @@ export function usePondChat(field: string, level: string, pondId: string) {
   const [text, setText] = useState('');
   const [myAvatarId, setMyAvatarId] = useState('fishbowl');
   const [myUserId, setMyUserId] = useState('');
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  const [editingMsg, setEditingMsg] = useState<ChatMessage | null>(null);
   const [myPoints, setMyPoints] = useState(0);
   const [activeChallenges, setActiveChallenges] = useState<Challenge[]>([]);
   const listRef = useRef<FlatList>(null);
@@ -98,19 +101,23 @@ export function usePondChat(field: string, level: string, pondId: string) {
   // 画面フォーカス時に再読み込み（チャレンジ参加後に戻ってきた際に反映）
   useFocusEffect(useCallback(() => { loadStorage(); }, [loadStorage]));
 
-  // サーバー池の場合はメッセージを取得
+  // サーバー池の場合はメッセージを取得（5秒ポーリング）
   useEffect(() => {
     if (!isServerPond) return;
 
-    (async () => {
+    const fetchMessages = async () => {
       const token = await authStorage.getToken();
       if (!token) return;
-      const userId = await authStorage.getUserId() ?? '';
+      const userId = (await authStorage.getUserId()) ?? '';
       const { data } = await api.get<ServerMessage[]>(`/ike/${pondId}/chat`, token);
       if (data) {
         setMessages(data.map((m) => serverMsgToChatMsg(m, userId, levelKey)));
       }
-    })();
+    };
+
+    fetchMessages();
+    const timer = setInterval(fetchMessages, 5000);
+    return () => clearInterval(timer);
   }, [isServerPond, pondId, levelKey]);
 
   const members: PondMember[] = getPondMembers(pondId, myAvatarId);
@@ -132,37 +139,19 @@ export function usePondChat(field: string, level: string, pondId: string) {
         .slice(-5)
         .map((m) => `${m.user}: ${m.content}`);
 
-      const res = await fetch('http://localhost:8787/ike/ai-fish', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          field: fieldLabel,
-          level: levelKey,
-          recentMessages,
-          memberCount,
-          userMessageCount,
-        }),
+      const { data } = await api.post<{ message: string }>('/ike/ai-fish', {
+        field: fieldLabel,
+        level: levelKey,
+        recentMessages,
+        memberCount,
+        userMessageCount,
       });
-      const data = await res.json() as { message: string };
       const fishMsg: ChatMessage = {
         id: `ai-fish-${Date.now()}`,
         user: 'AI魚',
         avatar: '🐟',
         level: levelKey,
-        content: data.message,
-        time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
-        isMe: false,
-        type: 'ai_fish',
-      };
-      setMessages((prev) => [...prev, fishMsg]);
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
-    } catch {
-      const fishMsg: ChatMessage = {
-        id: `ai-fish-${Date.now()}`,
-        user: 'AI魚',
-        avatar: '🐟',
-        level: levelKey,
-        content: `${fieldLabel}について、今日気になったことをシェアしてみよう！🐠`,
+        content: data ? data.message : `${fieldLabel}について、今日気になったことをシェアしてみよう！🐠`,
         time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
         isMe: false,
         type: 'ai_fish',
@@ -181,16 +170,45 @@ export function usePondChat(field: string, level: string, pondId: string) {
     if (isServerPond) {
       const token = await authStorage.getToken();
       if (!token) return;
-      const { data } = await api.post<ServerMessage>(
-        `/ike/${pondId}/chat/message`,
-        { content: trimmed },
-        token,
-      );
-      if (data) {
-        const newMsg = serverMsgToChatMsg(data, myUserId, levelKey);
-        setMessages((prev) => [...prev, newMsg]);
+      const userId = (await authStorage.getUserId()) ?? '';
+
+      if (editingMsg) {
+        // 編集モード
+        const { data } = await api.post<ServerMessage>(
+          `/ike/${pondId}/chat/${editingMsg.id}/edit`,
+          { content: trimmed },
+          token,
+        );
+        if (data) {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === editingMsg.id ? serverMsgToChatMsg(data, userId, levelKey) : m))
+          );
+        }
+        setEditingMsg(null);
+      } else if (replyingTo) {
+        // リプライモード
+        const { data } = await api.post<ServerMessage>(
+          `/ike/${pondId}/chat/${replyingTo.id}/reply`,
+          { content: trimmed },
+          token,
+        );
+        if (data) {
+          setMessages((prev) => [...prev, serverMsgToChatMsg(data, userId, levelKey)]);
+        }
+        setReplyingTo(null);
+      } else {
+        // 通常送信
+        const { data } = await api.post<ServerMessage>(
+          `/ike/${pondId}/chat/message`,
+          { content: trimmed },
+          token,
+        );
+        if (data) {
+          setMessages((prev) => [...prev, serverMsgToChatMsg(data, userId, levelKey)]);
+        }
       }
     } else {
+      // ローカル池
       const newMsg: ChatMessage = {
         id: String(msgCounter++),
         user: 'あなた',
@@ -199,13 +217,68 @@ export function usePondChat(field: string, level: string, pondId: string) {
         content: trimmed,
         time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
         isMe: true,
+        replyToId: replyingTo?.id,
       };
       setMessages((prev) => [...prev, newMsg]);
+      setReplyingTo(null);
     }
 
     setText('');
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
-  }, [text, levelKey, isServerPond, pondId, myUserId]);
+  }, [text, levelKey, isServerPond, pondId, myUserId, editingMsg, replyingTo]);
 
-  return { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId, ranking, activeChallenges, isStagnant, callAiFish, aiFishLoading };
+  const handleDelete = useCallback(async (msgId: string) => {
+    if (isServerPond) {
+      const token = await authStorage.getToken();
+      if (!token) return;
+      const { error } = await api.post(`/ike/${pondId}/chat/${msgId}/delete`, {}, token);
+      if (!error) {
+        setMessages((prev) => prev.filter((m) => m.id !== msgId));
+      }
+    } else {
+      setMessages((prev) => prev.filter((m) => m.id !== msgId));
+    }
+  }, [isServerPond, pondId]);
+
+  const startEdit = useCallback((msg: ChatMessage) => {
+    setEditingMsg(msg);
+    setReplyingTo(null);
+    setText(msg.content);
+  }, []);
+
+  const startReply = useCallback((msg: ChatMessage) => {
+    setReplyingTo(msg);
+    setEditingMsg(null);
+  }, []);
+
+  const cancelAction = useCallback(() => {
+    setEditingMsg(null);
+    setReplyingTo(null);
+    setText('');
+  }, []);
+
+  return {
+    fieldLabel,
+    levelKey,
+    messages,
+    text,
+    setText,
+    listRef,
+    handleSend,
+    handleDelete,
+    startEdit,
+    startReply,
+    cancelAction,
+    editingMsg,
+    replyingTo,
+    members,
+    memberCount,
+    myAvatarId,
+    myUserId,
+    ranking,
+    activeChallenges,
+    isStagnant,
+    callAiFish,
+    aiFishLoading,
+  };
 }

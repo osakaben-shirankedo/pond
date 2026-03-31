@@ -1,6 +1,7 @@
 import {
   View, Text, StyleSheet, FlatList, TextInput,
   TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions, ScrollView,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -23,14 +24,20 @@ const { width } = Dimensions.get('window');
 
 export default function PondChatScreen() {
   const { field, level, pondId } = useLocalSearchParams<{ field: string; level: string; pondId: string }>();
-  const { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId, ranking, activeChallenges, isStagnant, callAiFish, aiFishLoading } =
-    usePondChat(field ?? '', level ?? '澄み池', pondId ?? '');
+  const {
+    fieldLabel, levelKey, messages, text, setText, listRef,
+    handleSend, handleDelete, startEdit, startReply, cancelAction,
+    editingMsg, replyingTo,
+    members, memberCount, myAvatarId, myUserId,
+    ranking, activeChallenges, isStagnant, callAiFish, aiFishLoading,
+  } = usePondChat(field ?? '', level ?? '澄み池', pondId ?? '');
 
   const [showMembers, setShowMembers] = useState(false);
   const [memberTab, setMemberTab] = useState<'members' | 'ranking'>('members');
   const [bannerExpanded, setBannerExpanded] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const [msgMenuTarget, setMsgMenuTarget] = useState<ChatMessage | null>(null);
 
   const handleLeave = async () => {
     if (pondId && UUID_REGEX.test(pondId)) {
@@ -48,6 +55,32 @@ export default function PondChatScreen() {
     setShowMenu(false);
     setConfirmLeave(false);
     router.replace('/(tabs)/ponds');
+  };
+
+  const handleMsgLongPress = (item: ChatMessage) => {
+    setMsgMenuTarget(item);
+  };
+
+  const handleMsgEdit = () => {
+    if (!msgMenuTarget) return;
+    startEdit(msgMenuTarget);
+    setMsgMenuTarget(null);
+  };
+
+  const handleMsgDelete = () => {
+    if (!msgMenuTarget) return;
+    const target = msgMenuTarget;
+    setMsgMenuTarget(null);
+    Alert.alert('メッセージを削除しますか？', '', [
+      { text: 'キャンセル', style: 'cancel' },
+      { text: '削除', style: 'destructive', onPress: () => handleDelete(target.id) },
+    ]);
+  };
+
+  const handleMsgReply = () => {
+    if (!msgMenuTarget) return;
+    startReply(msgMenuTarget);
+    setMsgMenuTarget(null);
   };
 
   const renderMessage = useCallback(({ item }: { item: ChatMessage }) => {
@@ -105,42 +138,59 @@ export default function PondChatScreen() {
       );
     }
 
+    const replySource = item.replyToId
+      ? messages.find((m) => m.id === item.replyToId)
+      : null;
+
     if (item.isMe) {
       return (
-        <View style={styles.rowMe}>
-          <View style={styles.timeMe}>
-            <Text style={styles.timeText}>{item.time}</Text>
+        <TouchableOpacity activeOpacity={0.8} onLongPress={() => handleMsgLongPress(item)}>
+          {replySource && (
+            <View style={styles.replyPreviewMe}>
+              <Text style={styles.replyPreviewText} numberOfLines={1}>↩ {replySource.content}</Text>
+            </View>
+          )}
+          <View style={styles.rowMe}>
+            <View style={styles.timeMe}>
+              <Text style={styles.timeText}>{item.time}</Text>
+            </View>
+            <LinearGradient
+              colors={[Colors.primary, Colors.primaryContainer]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.bubble, styles.bubbleMe]}
+            >
+              <Text style={styles.bubbleTextMe}>{item.content}</Text>
+            </LinearGradient>
           </View>
-          <LinearGradient
-            colors={[Colors.primary, Colors.primaryContainer]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.bubble, styles.bubbleMe]}
-          >
-            <Text style={styles.bubbleTextMe}>{item.content}</Text>
-          </LinearGradient>
-        </View>
+        </TouchableOpacity>
       );
     }
     return (
-      <View style={styles.rowOther}>
-        {/* AvatarSprite で表示 */}
-        <AvatarSprite presetId={item.avatarId ?? 'fishbowl'} size={34} />
-        <View style={styles.bubbleOtherGroup}>
-          <View style={styles.senderRow}>
-            <Text style={styles.senderName}>{item.user}</Text>
-            <View style={styles.levelPill}>
-              <Text style={styles.levelPillText}>{item.level}</Text>
+      <TouchableOpacity activeOpacity={0.8} onLongPress={() => handleMsgLongPress(item)}>
+        {replySource && (
+          <View style={styles.replyPreviewOther}>
+            <Text style={styles.replyPreviewText} numberOfLines={1}>↩ {replySource.content}</Text>
+          </View>
+        )}
+        <View style={styles.rowOther}>
+          <AvatarSprite presetId={item.avatarId ?? 'fishbowl'} size={34} />
+          <View style={styles.bubbleOtherGroup}>
+            <View style={styles.senderRow}>
+              <Text style={styles.senderName}>{item.user}</Text>
+              <View style={styles.levelPill}>
+                <Text style={styles.levelPillText}>{item.level}</Text>
+              </View>
             </View>
+            <View style={[styles.bubble, styles.bubbleOther]}>
+              <Text style={styles.bubbleTextOther}>{item.content}</Text>
+            </View>
+            <Text style={styles.timeOther}>{item.time}</Text>
           </View>
-          <View style={[styles.bubble, styles.bubbleOther]}>
-            <Text style={styles.bubbleTextOther}>{item.content}</Text>
-          </View>
-          <Text style={styles.timeOther}>{item.time}</Text>
         </View>
-      </View>
+      </TouchableOpacity>
     );
-  }, []);
+  }, [messages, myUserId]);
 
   return (
     <KeyboardAvoidingView
@@ -165,23 +215,11 @@ export default function PondChatScreen() {
             <Text style={styles.levelChipText}>{levelKey}</Text>
           </View>
         </View>
-
-        {/* メンバーボタン */}
-        <TouchableOpacity
-          style={styles.memberBadge}
-          onPress={() => setShowMembers(true)}
-          hitSlop={8}
-        >
+        <TouchableOpacity style={styles.memberBadge} onPress={() => setShowMembers(true)} hitSlop={8}>
           <Ionicons name="people-outline" size={16} color={Colors.primary} />
           <Text style={styles.memberCount}>{memberCount}</Text>
         </TouchableOpacity>
-
-        {/* 三本線メニュー */}
-        <TouchableOpacity
-          style={styles.menuBtn}
-          onPress={() => setShowMenu(true)}
-          hitSlop={8}
-        >
+        <TouchableOpacity style={styles.menuBtn} onPress={() => setShowMenu(true)} hitSlop={8}>
           <Ionicons name="ellipsis-vertical" size={20} color={Colors.onSurfaceVariant} />
         </TouchableOpacity>
       </BlurView>
@@ -249,6 +287,23 @@ export default function PondChatScreen() {
         </TouchableOpacity>
       )}
 
+      {/* Reply / Edit バナー */}
+      {(replyingTo || editingMsg) && (
+        <View style={styles.actionBanner}>
+          <Ionicons
+            name={editingMsg ? 'create-outline' : 'return-down-forward-outline'}
+            size={16}
+            color={Colors.primary}
+          />
+          <Text style={styles.actionBannerText} numberOfLines={1}>
+            {editingMsg ? `編集中: ${editingMsg.content}` : `返信先: ${replyingTo!.content}`}
+          </Text>
+          <TouchableOpacity onPress={cancelAction} hitSlop={8}>
+            <Ionicons name="close" size={18} color={Colors.onSurfaceVariant} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Input bar */}
       <BlurView intensity={30} tint="light" style={styles.inputBar}>
         <AvatarSprite presetId={myAvatarId} size={32} />
@@ -256,7 +311,7 @@ export default function PondChatScreen() {
           style={styles.input}
           value={text}
           onChangeText={setText}
-          placeholder="メッセージを送る…"
+          placeholder={editingMsg ? '編集内容を入力…' : 'メッセージを送る…'}
           placeholderTextColor={Colors.outlineVariant}
           multiline
           maxLength={400}
@@ -279,7 +334,7 @@ export default function PondChatScreen() {
             colors={text.trim() ? [Colors.primary, Colors.primaryContainer] : [Colors.outlineVariant, Colors.outlineVariant]}
             style={styles.sendBtnGradient}
           >
-            <Ionicons name="arrow-up" size={18} color="#fff" />
+            <Ionicons name={editingMsg ? 'checkmark' : 'arrow-up'} size={18} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>
       </BlurView>
@@ -390,6 +445,35 @@ export default function PondChatScreen() {
           </View>
         </View>
       )}
+
+      {/* メッセージ長押しメニュー */}
+      {msgMenuTarget && (
+        <View style={styles.overlay}>
+          <TouchableOpacity style={styles.overlayBackdrop} activeOpacity={1} onPress={() => setMsgMenuTarget(null)} />
+          <View style={styles.menuSheet}>
+            <View style={{ alignSelf: 'center', marginTop: 8, width: 40, height: 4, borderRadius: Radius.full, backgroundColor: Colors.outlineVariant }} />
+            <TouchableOpacity style={styles.menuItem} onPress={handleMsgReply}>
+              <Ionicons name="return-down-forward-outline" size={22} color={Colors.primary} />
+              <Text style={styles.menuItemText}>返信する</Text>
+            </TouchableOpacity>
+            {msgMenuTarget.isMe && (
+              <>
+                <TouchableOpacity style={styles.menuItem} onPress={handleMsgEdit}>
+                  <Ionicons name="create-outline" size={22} color={Colors.primary} />
+                  <Text style={styles.menuItemText}>編集する</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.menuItem} onPress={handleMsgDelete}>
+                  <Ionicons name="trash-outline" size={22} color="#e05c7b" />
+                  <Text style={styles.menuItemTextDanger}>削除する</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            <TouchableOpacity style={[styles.menuItem, styles.menuItemCancel]} onPress={() => setMsgMenuTarget(null)}>
+              <Text style={styles.menuItemTextCancel}>キャンセル</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -413,50 +497,19 @@ const styles = StyleSheet.create({
   headerIcon: { width: 36, height: 36, borderRadius: Radius.full, backgroundColor: Colors.primaryFixed, alignItems: 'center', justifyContent: 'center' },
   headerInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, flexWrap: 'wrap' },
   headerTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 17, color: Colors.onSurface },
-
-  // レベルチップ（白文字で見やすく）
-  levelChip: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
-    borderRadius: Radius.full,
-  },
-  levelChipText: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    color: '#fff',
-    letterSpacing: 0.3,
-  },
-
-  memberBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.primaryFixed,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 6,
-    borderRadius: Radius.full,
-  },
-  memberCount: { fontFamily: 'Inter_700Bold', fontSize: 13, color: Colors.primary },
+  levelChip: { paddingHorizontal: Spacing.sm, paddingVertical: 3, borderRadius: Radius.full },
+  levelChipText: { fontFamily: 'Inter_500Medium', fontSize: 10, color: '#fff', letterSpacing: 0.3 },
+  memberBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.primaryFixed, paddingHorizontal: Spacing.sm, paddingVertical: 6, borderRadius: Radius.full },
+  memberCount: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: Colors.primary },
   menuBtn: { padding: 4 },
 
-  // メッセージ
   listContent: { paddingHorizontal: Spacing.md, paddingTop: Spacing.md, paddingBottom: Spacing.xl, gap: Spacing.md },
   rowOther: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm, maxWidth: width * 0.82 },
   bubbleOtherGroup: { flex: 1, gap: 3 },
   senderRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginLeft: 2 },
   senderName: { fontFamily: 'Inter_600SemiBold', fontSize: 11, color: Colors.onSurfaceVariant },
-  levelPill: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.primaryFixed,
-  },
-  levelPillText: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 9,
-    color: Colors.primary,
-    letterSpacing: 0.2,
-  },
+  levelPill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: Radius.full, backgroundColor: Colors.primaryFixed },
+  levelPillText: { fontFamily: 'Inter_500Medium', fontSize: 9, color: Colors.primary, letterSpacing: 0.2 },
   timeOther: { fontFamily: 'Inter_400Regular', fontSize: 10, color: Colors.outlineVariant, marginLeft: 4 },
   rowMe: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'flex-end', gap: Spacing.xs },
   timeMe: { alignSelf: 'flex-end', marginBottom: 4 },
@@ -475,7 +528,22 @@ const styles = StyleSheet.create({
   bubbleTextMe: { fontFamily: 'Inter_400Regular', fontSize: 14, color: '#fff', lineHeight: 20 },
   bubbleTextOther: { fontFamily: 'Inter_400Regular', fontSize: 14, color: Colors.onSurface, lineHeight: 20 },
 
-  // 入力バー
+  replyPreviewMe: { alignSelf: 'flex-end', marginRight: Spacing.sm, marginBottom: 2, backgroundColor: `${Colors.primaryFixed}88`, borderRadius: Radius.sm, paddingHorizontal: Spacing.sm, paddingVertical: 3, maxWidth: width * 0.6 },
+  replyPreviewOther: { marginLeft: 34 + Spacing.sm, marginBottom: 2, backgroundColor: Colors.surfaceContainerLow, borderRadius: Radius.sm, paddingHorizontal: Spacing.sm, paddingVertical: 3, maxWidth: width * 0.6 },
+  replyPreviewText: { fontFamily: 'Inter_400Regular', fontSize: 11, color: Colors.onSurfaceVariant },
+
+  actionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    backgroundColor: Colors.primaryFixed,
+    borderTopWidth: 1,
+    borderTopColor: `${Colors.primary}22`,
+  },
+  actionBannerText: { flex: 1, fontFamily: 'Inter_400Regular', fontSize: 13, color: Colors.primary },
+
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -503,71 +571,17 @@ const styles = StyleSheet.create({
   sendBtnDisabled: { opacity: 0.5 },
   sendBtnGradient: { width: 40, height: 40, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center' },
 
-  // オーバーレイ共通
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-end',
-    zIndex: 100,
-  },
-  overlayBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
+  overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end', zIndex: 100 },
+  overlayBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
 
-  // メンバーシート
-  memberSheet: {
-    backgroundColor: Colors.surface,
-    borderTopLeftRadius: Radius.xl,
-    borderTopRightRadius: Radius.xl,
-    maxHeight: '70%',
-    overflow: 'hidden',
-  },
-  sheetHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.surfaceContainerLow,
-  },
-  sheetHandle: {
-    position: 'absolute',
-    top: 8,
-    left: '50%',
-    marginLeft: -20,
-    width: 40,
-    height: 4,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.outlineVariant,
-  },
-  sheetTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontFamily: 'PlusJakartaSans_700Bold',
-    fontSize: 16,
-    color: Colors.onSurface,
-    marginTop: Spacing.sm,
-  },
+  memberSheet: { backgroundColor: Colors.surface, borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl, maxHeight: '70%', overflow: 'hidden' },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow },
+  sheetHandle: { position: 'absolute', top: 8, left: '50%', marginLeft: -20, width: 40, height: 4, borderRadius: Radius.full, backgroundColor: Colors.outlineVariant },
+  sheetTitle: { flex: 1, textAlign: 'center', fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: Colors.onSurface, marginTop: Spacing.sm },
   sheetTitleAccent: { color: Colors.primary },
-  sheetClose: {
-    width: 32,
-    height: 32,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.surfaceContainerLow,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Spacing.sm,
-  },
+  sheetClose: { width: 32, height: 32, borderRadius: Radius.full, backgroundColor: Colors.surfaceContainerLow, alignItems: 'center', justifyContent: 'center', marginTop: Spacing.sm },
   memberList: { padding: Spacing.lg },
-  memberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.surfaceContainerLow,
-  },
+  memberRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow },
   memberInfo: { flex: 1 },
   memberNameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   memberName: { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 15, color: Colors.onSurface },
@@ -754,6 +768,7 @@ const styles = StyleSheet.create({
   },
   menuConfirmText: { fontFamily: 'Inter_500Medium', fontSize: 14, color: Colors.onSurfaceVariant, textAlign: 'center', paddingVertical: Spacing.md },
   menuItemCancel: { justifyContent: 'center', borderBottomWidth: 0 },
+  menuItemText: { fontFamily: 'Inter_600SemiBold', fontSize: 16, color: Colors.primary },
   menuItemTextDanger: { fontFamily: 'Inter_600SemiBold', fontSize: 16, color: '#e05c7b' },
   menuItemTextCancel: { fontFamily: 'Inter_500Medium', fontSize: 16, color: Colors.onSurfaceVariant, textAlign: 'center', flex: 1 },
 });

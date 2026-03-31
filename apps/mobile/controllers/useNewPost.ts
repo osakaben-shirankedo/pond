@@ -3,6 +3,10 @@ import { TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { type PondEntry, MAX_CHARS, buildNewPost } from '@/models/new-post';
+import { api } from '@/services/api';
+import { authStorage } from '@/services/auth';
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function useNewPost() {
   const [ponds, setPonds] = useState<PondEntry[]>([]);
@@ -36,10 +40,25 @@ export function useNewPost() {
 
   const handlePost = async () => {
     if (!canPost || !selectedPond) return;
-    const newPost = buildNewPost(content, selectedPond, avatarId);
-    const stored = await AsyncStorage.getItem('pond_user_posts');
-    const existing = stored ? JSON.parse(stored) : [];
-    await AsyncStorage.setItem('pond_user_posts', JSON.stringify([newPost, ...existing]));
+
+    if (UUID_REGEX.test(selectedPond.pondId)) {
+      // サーバーの池 → /ike/:ike_id/chat/message に投稿
+      const token = await authStorage.getToken();
+      if (token) {
+        await api.post(
+          `/ike/${selectedPond.pondId}/chat/message`,
+          { content: content.trim() },
+          token,
+        );
+      }
+    } else {
+      // ローカルの池 → AsyncStorage に保存（タイムライン表示用）
+      const newPost = buildNewPost(content, selectedPond, avatarId);
+      const stored = await AsyncStorage.getItem('pond_user_posts');
+      const existing = stored ? JSON.parse(stored) : [];
+      await AsyncStorage.setItem('pond_user_posts', JSON.stringify([newPost, ...existing]));
+    }
+
     router.back();
   };
 

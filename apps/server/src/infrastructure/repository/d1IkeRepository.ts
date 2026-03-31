@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import type { IIkeRepository } from '../../domain/ike/repository'
 import type { Ike } from '../../domain/ike/entity'
@@ -24,6 +24,12 @@ export class D1IkeRepository implements IIkeRepository {
   async findById(id: string): Promise<Ike | null> {
     const result = await this.db.select().from(ikes).where(eq(ikes.id, id)).get()
     return result ? rowToIke(result as IkeRow) : null
+  }
+
+  async findByIds(ids: string[]): Promise<Ike[]> {
+    if (ids.length === 0) return []
+    const results = await this.db.select().from(ikes).where(inArray(ikes.id, ids)).all()
+    return (results as IkeRow[]).map(rowToIke)
   }
 
   async findByMemberId(userId: string): Promise<Ike[]> {

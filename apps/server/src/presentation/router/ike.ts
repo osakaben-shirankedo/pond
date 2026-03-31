@@ -3,6 +3,7 @@ import { drizzle } from 'drizzle-orm/d1'
 import { z } from 'zod'
 import { D1IkeRepository } from '../../infrastructure/repository/d1IkeRepository'
 import { D1MessageRepository } from '../../infrastructure/repository/d1MessageRepository'
+import { D1UserRepository } from '../../infrastructure/repository/d1UserRepository'
 import { GetIkeListUseCase } from '../../application/ike/getIkeList'
 import { GetIkeStatusUseCase } from '../../application/ike/getIkeStatus'
 import { GetIkeChatUseCase } from '../../application/ike/getIkeChat'
@@ -10,6 +11,7 @@ import { PostMessageUseCase } from '../../application/ike/postMessage'
 import { EditMessageUseCase } from '../../application/ike/editMessage'
 import { DeleteMessageUseCase } from '../../application/ike/deleteMessage'
 import { ReplyMessageUseCase } from '../../application/ike/replyMessage'
+import { JoinIkeUseCase } from '../../application/ike/joinIke'
 import { PostMessageInputSchema } from '../../domain/message/entity'
 import { authMiddleware } from '../middleware/auth'
 import type { Env } from '../../index'
@@ -137,7 +139,8 @@ router.use('*', authMiddleware)
 router.get('/list', async (c) => {
   const db = drizzle(c.env.POND_DB)
   const ikeRepo = new D1IkeRepository(db)
-  const ikes = await new GetIkeListUseCase(ikeRepo).execute(c.get('userId'))
+  const userRepo = new D1UserRepository(db)
+  const ikes = await new GetIkeListUseCase(ikeRepo, userRepo).execute(c.get('userId'))
   return c.json(ikes)
 })
 
@@ -214,14 +217,37 @@ router.post('/:ike_id/chat/:message_id/delete', async (c) => {
   }
 })
 
+router.post('/:ike_id/join', async (c) => {
+  const db = drizzle(c.env.POND_DB)
+  const ikeRepo = new D1IkeRepository(db)
+  const userRepo = new D1UserRepository(db)
+  try {
+    const ike = await new JoinIkeUseCase(ikeRepo, userRepo).execute(c.req.param('ike_id'), c.get('userId'))
+    return c.json(ike, 201)
+  } catch (e) {
+    if (e instanceof Error && e.message === 'IKE_NOT_FOUND') return c.json({ error: 'IKE_NOT_FOUND' }, 404)
+    if (e instanceof Error && e.message === 'ALREADY_A_MEMBER') return c.json({ error: 'ALREADY_A_MEMBER' }, 409)
+    throw e
+  }
+})
+
 router.post('/:ike_id/leave', async (c) => {
   const db = drizzle(c.env.POND_DB)
   const ikeRepo = new D1IkeRepository(db)
-  const ike = await ikeRepo.findById(c.req.param('ike_id'))
-  if (!ike) return c.json({ error: 'IKE_NOT_FOUND' }, 404)
+  const userRepo = new D1UserRepository(db)
+  const ikeId = c.req.param('ike_id')
   const userId = c.get('userId')
+
+  const [ike, user] = await Promise.all([ikeRepo.findById(ikeId), userRepo.findById(userId)])
+  if (!ike) return c.json({ error: 'IKE_NOT_FOUND' }, 404)
   if (!ike.member_ids.includes(userId)) return c.json({ error: 'NOT_A_MEMBER' }, 403)
-  await ikeRepo.update({ ...ike, member_ids: ike.member_ids.filter((id) => id !== userId) })
+  if (!user) return c.json({ error: 'USER_NOT_FOUND' }, 404)
+
+  const now = new Date().toISOString()
+  await Promise.all([
+    ikeRepo.update({ ...ike, member_ids: ike.member_ids.filter((id) => id !== userId), updated_at: now }),
+    userRepo.update({ ...user, belonging_ike_ids: user.belonging_ike_ids.filter((id) => id !== ikeId), updated_at: now }),
+  ])
   return c.json({ success: true })
 })
 

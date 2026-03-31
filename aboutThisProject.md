@@ -242,6 +242,7 @@ emailとpasswordを入力するフォーム。
 - nickname: string
 - email: string
 - encrypted_password: string
+- belonging_ike_ids: string[]
 - created_at: string
 - updated_at: string
 

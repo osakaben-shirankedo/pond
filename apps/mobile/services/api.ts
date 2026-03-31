@@ -1,7 +1,20 @@
-// EXPO_PUBLIC_API_URL を .env に設定してください
-// Android エミュレーター: http://10.0.2.2:8787
-// iOS シミュレーター / 実機: http://<PCのIP>:8787
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8787'
+import Constants from 'expo-constants'
+
+// 開発時: MetroのホストIPを使って自動でサーバーURLを解決する
+// - iOS シミュレーター → localhost
+// - Android エミュレーター → 10.0.2.2 (Metroが自動で解決)
+// - 実機 → PCのLAN IP (MetroのhostUriから取得)
+// 本番時: EXPO_PUBLIC_API_URL を使用
+function getBaseUrl(): string {
+  if (__DEV__) {
+    const hostUri = Constants.expoConfig?.hostUri
+    const host = hostUri ? hostUri.split(':')[0] : 'localhost'
+    return `http://${host}:8787`
+  }
+  return process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8787'
+}
+
+const BASE_URL = getBaseUrl()
 
 type ApiResult<T> =
   | { data: T; error: null }

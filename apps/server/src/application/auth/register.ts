@@ -25,6 +25,7 @@ export class RegisterUseCase {
       nickname: input.nickname,
       email: input.email,
       encrypted_password: await hashPassword(input.password),
+      belonging_ike_ids: [],
       created_at: now,
       updated_at: now,
     }

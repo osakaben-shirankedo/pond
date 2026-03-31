@@ -8,6 +8,7 @@ export const UserSchema = z.object({
   nickname: z.string().min(1),
   email: z.string().email(),
   encrypted_password: z.string(),
+  belonging_ike_ids: z.array(z.string()).default([]),
   created_at: z.string(),
   updated_at: z.string(),
 })

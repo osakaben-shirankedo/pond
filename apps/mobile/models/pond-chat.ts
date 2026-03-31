@@ -12,6 +12,7 @@ export type ChatMessage = {
   type?: 'normal' | 'challenge' | 'ai_fish';
   challengeId?: string;
   challengeTitle?: string;
+  replyToId?: string;
 };
 
 export const SEED_MESSAGES: Record<string, Omit<ChatMessage, 'id' | 'isMe'>[]> = {
