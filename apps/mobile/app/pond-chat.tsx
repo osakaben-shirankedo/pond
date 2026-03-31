@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Colors, Radius, Spacing, LEVEL_CHAT_BG } from '@/constants/theme';
 import { FieldIcon } from '@/components/ui/field-icon';
 import { AvatarSprite } from '@/components/avatar-sprite';
 import { LEVEL_GRADIENTS } from '@/models/pond';
@@ -148,7 +148,7 @@ export default function PondChatScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: LEVEL_CHAT_BG[levelKey] ?? Colors.surface }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={0}
     >

@@ -39,11 +39,19 @@ export const CHALLENGE_HISTORY_KEY = 'challenge_history';
 
 export const FIELD_ID_MAP: Record<string, string> = {
   'プログラミング': 'programming',
-  '数学': 'math',
-  '英語': 'english',
-  'アート': 'art',
-  '音楽': 'music',
-  '科学': 'science',
+  '数学':         'math',
+  '英語':         'english',
+  'アート':       'art',
+  '音楽':         'music',
+  '科学':         'science',
+  '物理':         'physics',
+  '化学':         'chemistry',
+  '生物':         'biology',
+  '歴史':         'history',
+  '地理':         'geography',
+  '国語':         'japanese',
+  '倫理・哲学':   'ethics',
+  '経済':         'economics',
 };
 
 export const CHALLENGES: Challenge[] = [

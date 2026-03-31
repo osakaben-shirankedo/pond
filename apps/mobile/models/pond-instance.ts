@@ -174,6 +174,158 @@ export const SEED_POND_INSTANCES: PondInstance[] = [
       { id: 'sca4', name: 'アオイ',     avatarId: 'manta',     level: '碧の池' },
     ],
   },
+  // ── 物理 ────────────────────────────────────────────────
+  {
+    pondId: 'phy-sumi-A', field: 'physics', level: '澄み池', label: 'A',
+    members: [
+      { id: 'pya1', name: 'かわうそ太郎', avatarId: 'turtle',    level: '澄み池' },
+      { id: 'pya2', name: 'さくら鯛',    avatarId: 'seahorse',  level: '澄み池' },
+      { id: 'pya3', name: 'ユウ',        avatarId: 'octopus',   level: '澄み池' },
+      { id: 'pya4', name: 'イチ',        avatarId: 'squid',     level: '澄み池' },
+    ],
+  },
+  {
+    pondId: 'phy-aoi-A', field: 'physics', level: '碧の池', label: 'A',
+    members: [
+      { id: 'pyb1', name: 'フナ次郎',    avatarId: 'diver',     level: '碧の池' },
+      { id: 'pyb2', name: 'コイ子',      avatarId: 'coral',     level: '碧の池' },
+      { id: 'pyb3', name: 'ナオ',        avatarId: 'orca',      level: '碧の池' },
+      { id: 'pyb4', name: 'シュン',      avatarId: 'submarine', level: '碧の池' },
+    ],
+  },
+  // ── 化学 ────────────────────────────────────────────────
+  {
+    pondId: 'che-sumi-A', field: 'chemistry', level: '澄み池', label: 'A',
+    members: [
+      { id: 'cha1', name: 'めだか花子',  avatarId: 'jellyfish', level: '澄み池' },
+      { id: 'cha2', name: 'コイ子',      avatarId: 'coral',     level: '澄み池' },
+      { id: 'cha3', name: 'モモ',        avatarId: 'fishbowl',  level: '澄み池' },
+      { id: 'cha4', name: 'ルイ',        avatarId: 'octopus',   level: '澄み池' },
+    ],
+  },
+  {
+    pondId: 'che-aoi-A', field: 'chemistry', level: '碧の池', label: 'A',
+    members: [
+      { id: 'chb1', name: 'さくら鯛',   avatarId: 'seahorse',  level: '碧の池' },
+      { id: 'chb2', name: 'フナ次郎',   avatarId: 'diver',     level: '碧の池' },
+      { id: 'chb3', name: 'アサ',       avatarId: 'manta',     level: '碧の池' },
+      { id: 'chb4', name: 'タイ',       avatarId: 'treasure',  level: '碧の池' },
+    ],
+  },
+  // ── 生物 ────────────────────────────────────────────────
+  {
+    pondId: 'bio-sumi-A', field: 'biology', level: '澄み池', label: 'A',
+    members: [
+      { id: 'bia1', name: 'さくら鯛',   avatarId: 'seahorse',  level: '澄み池' },
+      { id: 'bia2', name: 'コイ子',     avatarId: 'jellyfish', level: '澄み池' },
+      { id: 'bia3', name: 'ナナ',       avatarId: 'coral',     level: '澄み池' },
+      { id: 'bia4', name: 'リオ',       avatarId: 'squid',     level: '澄み池' },
+    ],
+  },
+  {
+    pondId: 'bio-aoi-A', field: 'biology', level: '碧の池', label: 'A',
+    members: [
+      { id: 'bib1', name: 'かわうそ太郎', avatarId: 'turtle',  level: '碧の池' },
+      { id: 'bib2', name: 'めだか花子',   avatarId: 'jellyfish', level: '碧の池' },
+      { id: 'bib3', name: 'ウミ',        avatarId: 'orca',     level: '碧の池' },
+      { id: 'bib4', name: 'ソウ',        avatarId: 'diver',    level: '碧の池' },
+    ],
+  },
+  // ── 歴史 ────────────────────────────────────────────────
+  {
+    pondId: 'his-sumi-A', field: 'history', level: '澄み池', label: 'A',
+    members: [
+      { id: 'hia1', name: 'フナ次郎',   avatarId: 'diver',     level: '澄み池' },
+      { id: 'hia2', name: 'さくら鯛',   avatarId: 'seahorse',  level: '澄み池' },
+      { id: 'hia3', name: 'タロウ',     avatarId: 'turtle',    level: '澄み池' },
+      { id: 'hia4', name: 'ハナ',       avatarId: 'fishbowl',  level: '澄み池' },
+    ],
+  },
+  {
+    pondId: 'his-aoi-A', field: 'history', level: '碧の池', label: 'A',
+    members: [
+      { id: 'hib1', name: 'めだか花子',  avatarId: 'jellyfish', level: '碧の池' },
+      { id: 'hib2', name: 'コイ子',      avatarId: 'coral',     level: '碧の池' },
+      { id: 'hib3', name: 'アキラ',      avatarId: 'octopus',   level: '碧の池' },
+      { id: 'hib4', name: 'チハル',      avatarId: 'squid',     level: '碧の池' },
+    ],
+  },
+  // ── 地理 ────────────────────────────────────────────────
+  {
+    pondId: 'geo-sumi-A', field: 'geography', level: '澄み池', label: 'A',
+    members: [
+      { id: 'gea1', name: 'コイ子',      avatarId: 'coral',     level: '澄み池' },
+      { id: 'gea2', name: 'かわうそ太郎', avatarId: 'turtle',   level: '澄み池' },
+      { id: 'gea3', name: 'スズ',        avatarId: 'manta',     level: '澄み池' },
+      { id: 'gea4', name: 'カイ',        avatarId: 'sailboat',  level: '澄み池' },
+    ],
+  },
+  {
+    pondId: 'geo-aoi-A', field: 'geography', level: '碧の池', label: 'A',
+    members: [
+      { id: 'geb1', name: 'フナ次郎',    avatarId: 'diver',     level: '碧の池' },
+      { id: 'geb2', name: 'さくら鯛',    avatarId: 'seahorse',  level: '碧の池' },
+      { id: 'geb3', name: 'ミズキ',      avatarId: 'lighthouse',level: '碧の池' },
+      { id: 'geb4', name: 'ケン',        avatarId: 'submarine', level: '碧の池' },
+    ],
+  },
+  // ── 国語 ────────────────────────────────────────────────
+  {
+    pondId: 'jpn-sumi-A', field: 'japanese', level: '澄み池', label: 'A',
+    members: [
+      { id: 'jna1', name: 'めだか花子',  avatarId: 'jellyfish', level: '澄み池' },
+      { id: 'jna2', name: 'さくら鯛',   avatarId: 'seahorse',  level: '澄み池' },
+      { id: 'jna3', name: 'アオイ',     avatarId: 'fishbowl',  level: '澄み池' },
+      { id: 'jna4', name: 'コトネ',     avatarId: 'coral',     level: '澄み池' },
+    ],
+  },
+  {
+    pondId: 'jpn-aoi-A', field: 'japanese', level: '碧の池', label: 'A',
+    members: [
+      { id: 'jnb1', name: 'かわうそ太郎', avatarId: 'turtle',  level: '碧の池' },
+      { id: 'jnb2', name: 'コイ子',       avatarId: 'coral',   level: '碧の池' },
+      { id: 'jnb3', name: 'マユ',         avatarId: 'octopus', level: '碧の池' },
+      { id: 'jnb4', name: 'ヒロキ',       avatarId: 'squid',   level: '碧の池' },
+    ],
+  },
+  // ── 倫理・哲学 ──────────────────────────────────────────
+  {
+    pondId: 'eth-sumi-A', field: 'ethics', level: '澄み池', label: 'A',
+    members: [
+      { id: 'eta1', name: 'さくら鯛',   avatarId: 'seahorse',  level: '澄み池' },
+      { id: 'eta2', name: 'フナ次郎',   avatarId: 'diver',     level: '澄み池' },
+      { id: 'eta3', name: 'テツ',       avatarId: 'lighthouse',level: '澄み池' },
+      { id: 'eta4', name: 'リン',       avatarId: 'treasure',  level: '澄み池' },
+    ],
+  },
+  {
+    pondId: 'eth-aoi-A', field: 'ethics', level: '碧の池', label: 'A',
+    members: [
+      { id: 'etb1', name: 'めだか花子',  avatarId: 'jellyfish', level: '碧の池' },
+      { id: 'etb2', name: 'コイ子',      avatarId: 'coral',     level: '碧の池' },
+      { id: 'etb3', name: 'ソラ',        avatarId: 'fishbowl',  level: '碧の池' },
+      { id: 'etb4', name: 'ユウキ',      avatarId: 'orca',      level: '碧の池' },
+    ],
+  },
+  // ── 経済 ────────────────────────────────────────────────
+  {
+    pondId: 'eco-sumi-A', field: 'economics', level: '澄み池', label: 'A',
+    members: [
+      { id: 'eca1', name: 'コイ子',      avatarId: 'coral',     level: '澄み池' },
+      { id: 'eca2', name: 'かわうそ太郎', avatarId: 'turtle',   level: '澄み池' },
+      { id: 'eca3', name: 'ワタル',      avatarId: 'manta',     level: '澄み池' },
+      { id: 'eca4', name: 'サキ',        avatarId: 'squid',     level: '澄み池' },
+    ],
+  },
+  {
+    pondId: 'eco-aoi-A', field: 'economics', level: '碧の池', label: 'A',
+    members: [
+      { id: 'ecb1', name: 'フナ次郎',    avatarId: 'diver',     level: '碧の池' },
+      { id: 'ecb2', name: 'さくら鯛',    avatarId: 'seahorse',  level: '碧の池' },
+      { id: 'ecb3', name: 'マサ',        avatarId: 'submarine', level: '碧の池' },
+      { id: 'ecb4', name: 'ナルミ',      avatarId: 'sailboat',  level: '碧の池' },
+    ],
+  },
 ];
 
 /** 指定分野・レベルの池IDリストを返す */
