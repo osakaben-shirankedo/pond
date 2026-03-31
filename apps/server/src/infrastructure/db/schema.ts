@@ -48,6 +48,24 @@ export const messages = sqliteTable('messages', {
   updated_at: text('updated_at').notNull(),
 })
 
+export const timelinePosts = sqliteTable('timeline_posts', {
+  id: text('id').primaryKey(),
+  user_id: text('user_id').notNull().references(() => users.id),
+  ike_id: text('ike_id').notNull(),
+  ike_category: text('ike_category').notNull(),
+  content: text('content').notNull(),
+  reply_to_id: text('reply_to_id'),
+  created_at: text('created_at').notNull(),
+  updated_at: text('updated_at').notNull(),
+})
+
+export const timelineLikes = sqliteTable('timeline_likes', {
+  id: text('id').primaryKey(),
+  post_id: text('post_id').notNull().references(() => timelinePosts.id),
+  user_id: text('user_id').notNull().references(() => users.id),
+  created_at: text('created_at').notNull(),
+})
+
 export const prompts = sqliteTable('prompts', {
   id: text('id').primaryKey(),
   model: text('model').notNull(),
