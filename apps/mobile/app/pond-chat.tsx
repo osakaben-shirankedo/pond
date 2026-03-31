@@ -8,12 +8,7 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-<<<<<<< HEAD
-import { Colors, Radius, Spacing } from '@/constants/theme';
-=======
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, Radius, Spacing, LEVEL_CHAT_BG } from '@/constants/theme';
->>>>>>> newcreate
 import { FieldIcon } from '@/components/ui/field-icon';
 import { AvatarSprite } from '@/components/avatar-sprite';
 import { LEVEL_GRADIENTS } from '@/models/pond';
@@ -24,19 +19,14 @@ const { width } = Dimensions.get('window');
 
 export default function PondChatScreen() {
   const { field, level, pondId } = useLocalSearchParams<{ field: string; level: string; pondId: string }>();
-<<<<<<< HEAD
   const {
     fieldLabel, levelKey, messages, text, setText, listRef,
     handleSend, handleDelete, startEdit, startReply, cancelAction,
     editingMsg, replyingTo,
     members, memberCount, myAvatarId, myUserId,
-    ranking, activeChallenges, isStagnant, callAiFish, aiFishLoading,
+    ranking, activeChallenges, pastChallenges, isStagnant, callAiFish, aiFishLoading,
     leavePond,
   } = usePondChat(field ?? '', level ?? '澄み池', pondId ?? '');
-=======
-  const { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId, ranking, activeChallenges, pastChallenges, isStagnant, callAiFish, aiFishLoading } =
-    usePondChat(field ?? '', level ?? '澄み池', pondId ?? '');
->>>>>>> newcreate
 
   const [showMembers, setShowMembers] = useState(false);
   const [memberTab, setMemberTab] = useState<'members' | 'ranking' | 'history'>('members');
@@ -171,7 +161,6 @@ export default function PondChatScreen() {
       );
     }
     return (
-<<<<<<< HEAD
       <TouchableOpacity activeOpacity={0.8} onLongPress={() => handleMsgLongPress(item)}>
         {replySource && (
           <View style={styles.replyPreviewOther}>
@@ -179,27 +168,18 @@ export default function PondChatScreen() {
           </View>
         )}
         <View style={styles.rowOther}>
-          <AvatarSprite presetId={item.avatarId ?? 'fishbowl'} size={34} />
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => router.push({ pathname: '/user-profile', params: { userName: item.user, avatarId: item.avatarId ?? 'fishbowl' } })}
+          >
+            <AvatarSprite presetId={item.avatarId ?? 'fishbowl'} size={34} />
+          </TouchableOpacity>
           <View style={styles.bubbleOtherGroup}>
             <View style={styles.senderRow}>
               <Text style={styles.senderName}>{item.user}</Text>
               <View style={styles.levelPill}>
                 <Text style={styles.levelPillText}>{item.level}</Text>
               </View>
-=======
-      <View style={styles.rowOther}>
-        <TouchableOpacity
-          activeOpacity={0.75}
-          onPress={() => router.push({ pathname: '/user-profile', params: { userName: item.user, avatarId: item.avatarId ?? 'fishbowl' } })}
-        >
-          <AvatarSprite presetId={item.avatarId ?? 'fishbowl'} size={34} />
-        </TouchableOpacity>
-        <View style={styles.bubbleOtherGroup}>
-          <View style={styles.senderRow}>
-            <Text style={styles.senderName}>{item.user}</Text>
-            <View style={styles.levelPill}>
-              <Text style={styles.levelPillText}>{item.level}</Text>
->>>>>>> newcreate
             </View>
             <View style={[styles.bubble, styles.bubbleOther]}>
               <Text style={styles.bubbleTextOther}>{item.content}</Text>

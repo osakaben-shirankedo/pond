@@ -131,6 +131,7 @@ ORMはDrizzle
   - 池のチャットに(自分の)メッセージを削除
 - POST /ike/:ike_id/chat/:message_id/reply
   - 池のチャットにメッセージをリプライ
+
 - GET /timeline
   - タイムラインを取得
 - POST /timeline/post
@@ -143,6 +144,20 @@ ORMはDrizzle
   - タイムラインに投稿にリプライ
 - POST /timeline/unreply/:message_id
   - タイムラインに投稿のリプライ解除
+
+- GET /challenge/list
+  - チャレンジの一覧
+- GET /challenge/:challenge_id/status
+  - チャレンジのステータス
+- POST /challenge/:challenge_id/join
+  - チャレンジに参加
+- POST /challenge/:challenge_id/leave
+  - チャレンジを辞退
+- POST /challenge/:challenge_id/submit
+  - チャレンジを提出
+- GET /challenge/:challenge_id/others_answers
+  - 他のユーザーの提出を取得(自分が提出している場合のみ)
+
 - GET /profile
   - プロフィールを取得
 - POST /profile/edit
@@ -296,11 +311,21 @@ emailとpasswordを入力するフォーム。
 
 - id: string
 - ikeName: string
+- category: string
+- level: IkeLevel
 - description: string
 - memberIds: string[] (user id)
 - chatRoomId: string
+- joined_challenges: string[] (challenge id)
 - created_at: string
 - updated_at: string
+
+#### IkeLevel
+
+- 澄み池
+- 碧の池
+- 深碧池
+- 蒼淵
 
 #### ChatRoom
 
@@ -318,27 +343,57 @@ emailとpasswordを入力するフォーム。
 - created_at: string
 - updated_at: string
 
-#### Timeline (incomplete)
+#### TimelineHolder
 
 - id: string
-- user_id: string
 - contents: timelineItem[]
 - created_at: string
 - updated_at: string
 
-#### timelineItem(incomplete)
+#### timelineItem
+
+ユーザーに表示されるタイムラインはマイ池と同じカテゴリーの全レベル帯のコンテンツを確認することが、できます。
 
 - id: string
-- timelineitem_id: string
 - user_id: string
+- ike_id: string
+- ike_category: string
+- content: string
 - created_at: string
 - updated_at: string
 
-#### Challenge(incomplete)
+#### Challenge
+
+チャレンジはAIによって作成されます。
+チャレンジの管理方法はチャレンジの中に参加した池ごとに（管理用オブジェクト）池チャレンジを作成し、管理します。
+さらに、池チャレンジの中に答えを配置し、いつでも見返せるようにします。
+また同じ帯のレベルのみが参加できます。
+池チャレンジの参加者が0になった場合池ごと辞退となります。
 
 - id: string
-- name: string
+- title: string
 - description: string
+- joined_ike_challenge_id: string (joined_ike_challenge_id)
+- level: IkeLevel
+- timelimit: Date
+- created_at: string
+- updated_at: string
+
+#### JoinedIkeChallenge
+
+- id: string
+- ike_id: string
+- challenge_id: string
+- joined_user_ids: string[]
+- answers: string[] (challengeAnswer id)
+- created_at: string
+- updated_at: string
+
+#### ChallengeAnswer
+
+- id: string
+- user_id: string
+- answer: string
 - created_at: string
 - updated_at: string
 
