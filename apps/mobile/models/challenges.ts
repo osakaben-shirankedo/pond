@@ -35,6 +35,7 @@ export type MySubmissionResult = {
 export const CHALLENGE_JOINED_KEY = 'challenge_joined';
 export const CHALLENGE_SUBMISSION_KEY = 'challenge_submission';
 export const CHALLENGE_PARTICIPATING_KEY = 'challenge_participating';
+export const CHALLENGE_HISTORY_KEY = 'challenge_history';
 
 export const FIELD_ID_MAP: Record<string, string> = {
   'プログラミング': 'programming',
@@ -89,6 +90,75 @@ export const CHALLENGES: Challenge[] = [
     participants: 15,
     joined: false,
     isSubjective: true,
+  },
+];
+
+export const PAST_CHALLENGES: Challenge[] = [
+  {
+    id: 'past-1',
+    field: 'プログラミング',
+    level: '澄み池',
+    title: 'Hello Worldを5言語で書こう',
+    description: '異なる5つのプログラミング言語でHello Worldを実装してみよう！',
+    daysLeft: 0,
+    participants: 42,
+    joined: false,
+    isSubjective: false,
+  },
+  {
+    id: 'past-2',
+    field: '数学',
+    level: '澄み池',
+    title: '素数を列挙しよう',
+    description: '100以下の素数をすべて列挙し、その手順を説明しよう',
+    daysLeft: 0,
+    participants: 28,
+    joined: false,
+    isSubjective: false,
+  },
+  {
+    id: 'past-3',
+    field: '英語',
+    level: '碧の池',
+    title: '自己紹介を英語で書こう',
+    description: '自分のことを100語以上の英語で紹介しよう',
+    daysLeft: 0,
+    participants: 35,
+    joined: false,
+    isSubjective: true,
+  },
+  {
+    id: 'past-4',
+    field: 'アート',
+    level: '澄み池',
+    title: '好きな風景をスケッチ',
+    description: '身近な風景や景色をスケッチして投稿しよう',
+    daysLeft: 0,
+    participants: 19,
+    joined: false,
+    isSubjective: true,
+  },
+  {
+    id: 'past-5',
+    field: '音楽',
+    level: '澄み池',
+    title: 'Cコードだけで1曲弾こう',
+    description: 'CメジャーコードだけでポップスやJ-POPを1フレーズ弾いて投稿しよう',
+    daysLeft: 0,
+    participants: 22,
+    joined: false,
+    isSubjective: true,
+  },
+  {
+    id: 'past-6',
+    field: '科学',
+    level: '澄み池',
+    title: '元素記号クイズ10問',
+    description: '周期表の元素記号10個をランダムに答えてみよう',
+    daysLeft: 0,
+    participants: 17,
+    joined: false,
+    isSubjective: false,
   },
 ];
 

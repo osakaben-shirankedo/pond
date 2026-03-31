@@ -6,7 +6,7 @@ import type { LevelKey } from '@/constants/theme';
 import { FIELD_LABELS } from '@/models/field';
 import { getPondMembers, getAvatarIdByName, type PondMember } from '@/models/pond-instance';
 import { getRankingForPond, type RankedMember, POND_POINTS_KEY } from '@/models/points';
-import { CHALLENGES, CHALLENGE_JOINED_KEY, FIELD_ID_MAP, type Challenge } from '@/models/challenges';
+import { CHALLENGES, PAST_CHALLENGES, CHALLENGE_JOINED_KEY, CHALLENGE_SUBMISSION_KEY, FIELD_ID_MAP, type Challenge } from '@/models/challenges';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '@/services/api';
 import { authStorage } from '@/services/auth';
@@ -56,6 +56,7 @@ export function usePondChat(field: string, level: string, pondId: string) {
   const [myUserId, setMyUserId] = useState('');
   const [myPoints, setMyPoints] = useState(0);
   const [activeChallenges, setActiveChallenges] = useState<Challenge[]>([]);
+  const [pastChallenges, setPastChallenges] = useState<Challenge[]>([]);
   const listRef = useRef<FlatList>(null);
 
   const loadStorage = useCallback(() => {
@@ -64,7 +65,8 @@ export function usePondChat(field: string, level: string, pondId: string) {
       AsyncStorage.getItem(POND_POINTS_KEY),
       AsyncStorage.getItem(CHALLENGE_JOINED_KEY),
       AsyncStorage.getItem(`challenge_chat_${pondId}`),
-    ]).then(([avatarStored, pointsStored, joinedStr, challengeChatStr]) => {
+      AsyncStorage.getItem(CHALLENGE_SUBMISSION_KEY),
+    ]).then(([avatarStored, pointsStored, joinedStr, challengeChatStr, subStr]) => {
       if (avatarStored) setMyAvatarId(avatarStored);
       if (pointsStored) setMyPoints(parseInt(pointsStored, 10));
 
@@ -78,11 +80,28 @@ export function usePondChat(field: string, level: string, pondId: string) {
       }
 
       const joinedIds: string[] = joinedStr ? JSON.parse(joinedStr) : [];
+      const submissionsMap: Record<string, { pass: boolean }> = subStr ? JSON.parse(subStr) : {};
       const fieldKey = Object.entries(FIELD_ID_MAP).find(([, v]) => v === field)?.[0];
+
+      // クリア済みを除いたアクティブチャレンジ
       const matched = CHALLENGES.filter(
         (c) => joinedIds.includes(c.id) && (c.field === fieldKey || c.field === field)
+          && submissionsMap[c.id]?.pass !== true
       );
       setActiveChallenges(matched.sort((a, b) => b.daysLeft - a.daysLeft));
+
+      // 過去チャレンジ（PAST_CHALLENGES + クリア済みのアクティブチャレンジ）
+      const clearedActive = CHALLENGES.filter(
+        (c) => (c.field === fieldKey || c.field === field) && submissionsMap[c.id]?.pass === true
+      );
+      const pastFromField = PAST_CHALLENGES.filter(
+        (c) => c.field === fieldKey || c.field === field
+      );
+      const pastIds = new Set(pastFromField.map((c) => c.id));
+      const merged = [...clearedActive, ...pastFromField.filter((c) => !pastIds.has(c.id) || true)];
+      // dedupe by id
+      const seen = new Set<string>();
+      setPastChallenges(merged.filter((c) => { if (seen.has(c.id)) return false; seen.add(c.id); return true; }));
 
       // 池を開いたので未読フラグをクリア
       if (pondId) clearPondUnread(pondId);
@@ -207,5 +226,5 @@ export function usePondChat(field: string, level: string, pondId: string) {
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
   }, [text, levelKey, isServerPond, pondId, myUserId]);
 
-  return { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId, ranking, activeChallenges, isStagnant, callAiFish, aiFishLoading };
+  return { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId, ranking, activeChallenges, pastChallenges, isStagnant, callAiFish, aiFishLoading };
 }

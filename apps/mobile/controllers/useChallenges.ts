@@ -3,6 +3,7 @@ import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   CHALLENGES,
+  PAST_CHALLENGES,
   CHALLENGE_JOINED_KEY,
   CHALLENGE_SUBMISSION_KEY,
   CHALLENGE_PARTICIPATING_KEY,
@@ -107,12 +108,36 @@ export function useChallenges() {
       ...c,
       joined: joinedIds.includes(c.id),
       passed: submissionsMap[c.id]?.pass === true,
-      // 自分が参加済みなら+1
       participants: c.participants + (joinedIds.includes(c.id) ? 1 : 0),
     }));
 
+  // 過去チャレンジ＋クリア済みアクティブチャレンジ
+  const clearedActive = CHALLENGES
+    .filter((c) => submissionsMap[c.id]?.pass === true)
+    .filter((c) => {
+      if (userFieldIds.length === 0) return true;
+      const fieldId = FIELD_ID_MAP[c.field] ?? c.field;
+      return userFieldIds.includes(fieldId);
+    })
+    .map((c) => ({ ...c, joined: true, passed: true, participants: c.participants + 1 }));
+
+  const pastBase = PAST_CHALLENGES
+    .filter((c) => {
+      if (userFieldIds.length === 0) return true;
+      const fieldId = FIELD_ID_MAP[c.field] ?? c.field;
+      return userFieldIds.includes(fieldId);
+    })
+    .map((c) => ({ ...c, joined: false, passed: false }));
+
+  const clearedIds = new Set(clearedActive.map((c) => c.id));
+  const pastChallenges = [
+    ...clearedActive,
+    ...pastBase.filter((c) => !clearedIds.has(c.id)),
+  ];
+
   return {
     challenges,
+    pastChallenges,
     joinedIds,
     submissionsMap,
     joinChallenge,

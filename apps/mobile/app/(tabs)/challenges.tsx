@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { FieldIcon } from '@/components/ui/field-icon';
 import { FIELD_ID_MAP } from '@/models/challenges';
@@ -11,7 +12,8 @@ import { useChallenges } from '@/controllers/useChallenges';
 const { width } = Dimensions.get('window');
 
 export default function ChallengesScreen() {
-  const { challenges, joinChallenge, leaveChallenge } = useChallenges();
+  const { challenges, pastChallenges, joinChallenge, leaveChallenge } = useChallenges();
+  const [tab, setTab] = useState<'active' | 'past'>('active');
 
   return (
     <View style={styles.container}>
@@ -28,21 +30,51 @@ export default function ChallengesScreen() {
         </View>
       </BlurView>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <LinearGradient
-          colors={[Colors.primary, Colors.secondary]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.banner}
+      {/* タブ */}
+      <View style={styles.tabRow}>
+        <TouchableOpacity
+          style={[styles.tab, tab === 'active' && styles.tabActive]}
+          onPress={() => setTab('active')}
         >
-          <Ionicons name="flash" size={32} color="#fff" />
-          <View style={styles.bannerText}>
-            <Text style={styles.bannerTitle}>チャレンジ期間中！</Text>
-            <Text style={styles.bannerDesc}>参加して同じ池の仲間と競おう</Text>
-          </View>
-        </LinearGradient>
+          <Text style={[styles.tabText, tab === 'active' && styles.tabTextActive]}>今週のチャレンジ</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, tab === 'past' && styles.tabActive]}
+          onPress={() => setTab('past')}
+        >
+          <Text style={[styles.tabText, tab === 'past' && styles.tabTextActive]}>過去のチャレンジ</Text>
+          {pastChallenges.length > 0 && (
+            <View style={styles.tabBadge}>
+              <Text style={styles.tabBadgeText}>{pastChallenges.length}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
 
-        {challenges.map((ch) => (
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {tab === 'active' && (
+          <LinearGradient
+            colors={[Colors.primary, Colors.secondary]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.banner}
+          >
+            <Ionicons name="flash" size={32} color="#fff" />
+            <View style={styles.bannerText}>
+              <Text style={styles.bannerTitle}>チャレンジ期間中！</Text>
+              <Text style={styles.bannerDesc}>参加して同じ池の仲間と競おう</Text>
+            </View>
+          </LinearGradient>
+        )}
+
+        {tab === 'past' && pastChallenges.length === 0 && (
+          <View style={styles.emptyState}>
+            <Ionicons name="trophy-outline" size={48} color={Colors.primaryFixed} />
+            <Text style={styles.emptyText}>まだ挑戦したチャレンジはありません</Text>
+          </View>
+        )}
+
+        {(tab === 'active' ? challenges : pastChallenges).map((ch) => (
           <View key={ch.id} style={styles.card}>
             <View style={styles.cardHeader}>
               <View style={styles.fieldTag}>
@@ -73,12 +105,29 @@ export default function ChallengesScreen() {
               </View>
             </View>
 
-            {ch.passed ? (
+            {tab === 'past' ? (
+              /* 過去チャレンジ: タイムラインのみ */
+              <TouchableOpacity
+                onPress={() => router.push({ pathname: '/challenge-submit', params: { challengeId: ch.id, mode: 'timeline' } })}
+                activeOpacity={0.85}
+                style={styles.submitBtn}
+              >
+                <LinearGradient
+                  colors={[Colors.secondary, Colors.secondaryContainer]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.submitBtnGradient}
+                >
+                  <Ionicons name="list" size={14} color="#fff" />
+                  <Text style={styles.submitBtnText}>みんなの回答を見る</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : ch.passed ? (
               /* 成功済み */
               <View style={styles.joinedRow}>
                 <View style={styles.passedBtn}>
                   <Ionicons name="checkmark-circle" size={16} color="#fff" />
-                  <Text style={styles.passedBtnText}>参加済み</Text>
+                  <Text style={styles.passedBtnText}>クリア済み</Text>
                 </View>
                 <TouchableOpacity
                   onPress={() => router.push({ pathname: '/challenge-submit', params: { challengeId: ch.id, mode: 'timeline' } })}
@@ -167,6 +216,20 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontFamily: 'Inter_400Regular', fontSize: 12, color: Colors.onSurfaceVariant },
   weekBadge: { backgroundColor: Colors.primaryFixed, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderRadius: Radius.full },
   weekBadgeText: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: Colors.primary },
+  tabRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceContainerLow,
+    backgroundColor: Colors.surface,
+  },
+  tab: { flex: 1, paddingVertical: Spacing.md, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 },
+  tabActive: { borderBottomWidth: 2, borderBottomColor: Colors.primary },
+  tabText: { fontFamily: 'Inter_500Medium', fontSize: 14, color: Colors.onSurfaceVariant },
+  tabTextActive: { color: Colors.primary, fontFamily: 'Inter_700Bold' },
+  tabBadge: { backgroundColor: Colors.primaryFixed, borderRadius: Radius.full, paddingHorizontal: 6, paddingVertical: 2 },
+  tabBadgeText: { fontFamily: 'Inter_700Bold', fontSize: 10, color: Colors.primary },
+  emptyState: { alignItems: 'center', paddingTop: 60, gap: Spacing.md },
+  emptyText: { fontFamily: 'Inter_400Regular', fontSize: 14, color: Colors.onSurfaceVariant },
   content: { padding: Spacing.lg, gap: Spacing.md },
   banner: {
     borderRadius: Radius.xl,

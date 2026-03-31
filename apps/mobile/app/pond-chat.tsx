@@ -23,11 +23,11 @@ const { width } = Dimensions.get('window');
 
 export default function PondChatScreen() {
   const { field, level, pondId } = useLocalSearchParams<{ field: string; level: string; pondId: string }>();
-  const { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId, ranking, activeChallenges, isStagnant, callAiFish, aiFishLoading } =
+  const { fieldLabel, levelKey, messages, text, setText, listRef, handleSend, members, memberCount, myAvatarId, ranking, activeChallenges, pastChallenges, isStagnant, callAiFish, aiFishLoading } =
     usePondChat(field ?? '', level ?? '澄み池', pondId ?? '');
 
   const [showMembers, setShowMembers] = useState(false);
-  const [memberTab, setMemberTab] = useState<'members' | 'ranking'>('members');
+  const [memberTab, setMemberTab] = useState<'members' | 'ranking' | 'history'>('members');
   const [bannerExpanded, setBannerExpanded] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -312,6 +312,12 @@ export default function PondChatScreen() {
               >
                 <Text style={[styles.tabText, memberTab === 'ranking' && styles.tabTextActive]}>ランキング</Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, memberTab === 'history' && styles.tabActive]}
+                onPress={() => setMemberTab('history')}
+              >
+                <Text style={[styles.tabText, memberTab === 'history' && styles.tabTextActive]}>過去の挑戦</Text>
+              </TouchableOpacity>
             </View>
             {memberTab === 'members' ? (
               <ScrollView showsVerticalScrollIndicator={false} style={styles.memberList}>
@@ -332,7 +338,7 @@ export default function PondChatScreen() {
                   </View>
                 ))}
               </ScrollView>
-            ) : (
+            ) : memberTab === 'ranking' ? (
               <ScrollView showsVerticalScrollIndicator={false} style={styles.memberList}>
                 {ranking.map((m) => (
                   <View key={m.id} style={styles.rankRow}>
@@ -352,6 +358,28 @@ export default function PondChatScreen() {
                     </View>
                     <Text style={styles.rankPoints}>{m.points.toLocaleString()} pt</Text>
                   </View>
+                ))}
+              </ScrollView>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false} style={styles.memberList}>
+                {pastChallenges.length === 0 ? (
+                  <Text style={styles.historyEmpty}>まだ挑戦したチャレンジはありません</Text>
+                ) : pastChallenges.map((ch) => (
+                  <TouchableOpacity
+                    key={ch.id}
+                    style={styles.historyItem}
+                    activeOpacity={0.8}
+                    onPress={() => { setShowMembers(false); router.push({ pathname: '/challenge-submit', params: { challengeId: ch.id, mode: 'timeline' } }); }}
+                  >
+                    <View style={styles.historyIconWrap}>
+                      <Ionicons name="trophy-outline" size={18} color={Colors.primary} />
+                    </View>
+                    <View style={styles.historyInfo}>
+                      <Text style={styles.historyTitle} numberOfLines={1}>{ch.title}</Text>
+                      <Text style={styles.historyMeta}>{ch.field} · {ch.participants}人参加</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={Colors.outlineVariant} />
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
             )}
@@ -696,6 +724,28 @@ const styles = StyleSheet.create({
     minWidth: 64,
     textAlign: 'right',
   },
+
+  // 過去チャレンジ履歴
+  historyEmpty: { fontFamily: 'Inter_400Regular', fontSize: 13, color: Colors.onSurfaceVariant, textAlign: 'center', paddingVertical: Spacing.xl },
+  historyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceContainerLow,
+  },
+  historyIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.primaryFixed,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  historyInfo: { flex: 1 },
+  historyTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: Colors.onSurface },
+  historyMeta: { fontFamily: 'Inter_400Regular', fontSize: 11, color: Colors.onSurfaceVariant, marginTop: 2 },
 
   // AI魚
   aiFishRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm, maxWidth: width * 0.82, marginVertical: 2 },
