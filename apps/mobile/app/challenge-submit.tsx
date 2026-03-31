@@ -177,6 +177,12 @@ export default function ChallengeSubmitScreen() {
             <Text style={styles.aiTagText}>AI採点</Text>
           </View>
         )}
+        {!isTimelineMode && !result && (
+          <TouchableOpacity onPress={() => setConfirmLeave(true)} style={styles.leaveBtn} hitSlop={8}>
+            <Ionicons name="exit-outline" size={18} color="#e05c7b" />
+            <Text style={styles.leaveBtnText}>池で辞退</Text>
+          </TouchableOpacity>
+        )}
       </BlurView>
 
       <ScrollView
