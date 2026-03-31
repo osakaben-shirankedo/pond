@@ -82,6 +82,15 @@ export default function PondChatScreen() {
       );
     }
 
+    // システムメッセージ
+    if (item.type === 'system') {
+      return (
+        <View style={styles.systemMsgRow}>
+          <Text style={styles.systemMsgText}>{item.content}</Text>
+        </View>
+      );
+    }
+
     // AI魚メッセージ
     if (item.type === 'ai_fish') {
       return (
@@ -772,6 +781,9 @@ const styles = StyleSheet.create({
   historyTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: Colors.onSurface },
   historyMeta: { fontFamily: 'Inter_400Regular', fontSize: 11, color: Colors.onSurfaceVariant, marginTop: 2 },
 
+  // システムメッセージ
+  systemMsgRow: { alignItems: 'center', marginVertical: 8 },
+  systemMsgText: { fontFamily: 'Inter_400Regular', fontSize: 12, color: Colors.onSurfaceVariant, backgroundColor: `${Colors.surfaceContainerHigh}cc`, paddingHorizontal: 12, paddingVertical: 4, borderRadius: Radius.full },
   // AI魚
   aiFishRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm, maxWidth: width * 0.82, marginVertical: 2 },
   aiFishAvatar: { width: 34, height: 34, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center' },

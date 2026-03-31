@@ -125,6 +125,24 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
 
     setAssignedPondId(pondId);
     setPurposeSelected(true);
+
+    // 池に参加したシステムメッセージを保存
+    const displayNameStored = await AsyncStorage.getItem('pond_display_name');
+    const playerName = displayNameStored || 'あなた';
+    const joinMsg = {
+      id: `join-${Date.now()}`,
+      user: 'system',
+      avatar: '',
+      level: lv,
+      content: `${playerName}が参加しました。`,
+      time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
+      isMe: false,
+      type: 'system',
+    };
+    const chatKey = `challenge_chat_${pondId}`;
+    const existing2 = await AsyncStorage.getItem(chatKey);
+    const chatMsgs = existing2 ? JSON.parse(existing2) : [];
+    await AsyncStorage.setItem(chatKey, JSON.stringify([...chatMsgs, joinMsg]));
   };
 
   const handleEnter = () => {
