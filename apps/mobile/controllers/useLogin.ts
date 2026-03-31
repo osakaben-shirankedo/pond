@@ -32,7 +32,7 @@ export function useLogin() {
     const { error: profileError } = await api.get('/profile', data.token);
     setLoading(false);
     if (profileError === 'PROFILE_NOT_FOUND') {
-      router.replace('/onboarding');
+      router.replace('/login');
     } else {
       router.replace('/(tabs)');
     }

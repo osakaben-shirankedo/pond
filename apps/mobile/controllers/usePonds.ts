@@ -65,7 +65,7 @@ export function usePonds() {
     })();
   }, []));
 
-  const handleAddPond = () => router.push('/onboarding');
+  const handleAddPond = () => router.push('/');
 
   const handleReassess = (field: string) =>
     router.push({ pathname: '/assessment', params: { field } });

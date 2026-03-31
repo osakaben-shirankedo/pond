@@ -55,7 +55,7 @@ export default function RootLayout() {
         // サーバー未起動でもアプリを使えるようにタブへ
         router.replace('/(tabs)');
       } else if (error === 'PROFILE_NOT_FOUND') {
-        router.replace('/onboarding');
+        router.replace('/login');
       } else if (error) {
         // トークン無効など
         await authStorage.clear();

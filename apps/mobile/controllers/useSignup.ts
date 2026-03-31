@@ -53,8 +53,8 @@ export function useSignup() {
         registerError === 'EMAIL_ALREADY_EXISTS'
           ? 'このメールアドレスは既に使われています'
           : registerError === 'USER_ID_ALREADY_EXISTS'
-          ? 'このユーザーIDは既に使われています'
-          : '入力内容を確認するか、しばらく経ってからやり直してください'
+            ? 'このユーザーIDは既に使われています'
+            : '入力内容を確認するか、しばらく経ってからやり直してください'
       );
       return;
     }
