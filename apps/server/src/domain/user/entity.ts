@@ -5,6 +5,7 @@ export type PublicRange = z.infer<typeof PublicRangeSchema>
 
 export const UserSchema = z.object({
   id: z.string(),
+  user_id: z.string(),
   nickname: z.string().min(1),
   email: z.string().email(),
   encrypted_password: z.string(),
@@ -15,6 +16,7 @@ export const UserSchema = z.object({
 export type User = z.infer<typeof UserSchema>
 
 export const CreateUserInputSchema = z.object({
+  user_id: z.string().min(4).max(20).regex(/^[a-zA-Z0-9_]+$/, 'IDは半角英数字とアンダースコアのみ使用できます'),
   nickname: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(8),

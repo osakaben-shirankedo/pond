@@ -5,6 +5,7 @@ import { api } from '@/services/api';
 import { authStorage } from '@/services/auth';
 
 export function useSignup() {
+  const [userId, setUserId] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -14,8 +15,17 @@ export function useSignup() {
   const [loading, setLoading] = useState(false);
 
   const handleSignup = async () => {
-    if (!name || !email || !password || !confirmPassword) {
+    if (!userId || !name || !email || !password || !confirmPassword) {
       Alert.alert('エラー', 'すべての項目を入力してください');
+      return;
+    }
+    const idRegex = /^[a-zA-Z0-9_]+$/;
+    if (!idRegex.test(userId)) {
+      Alert.alert('エラー', 'ユーザーIDは半角英数字とアンダースコアのみ使用できます');
+      return;
+    }
+    if (userId.length < 4 || userId.length > 20) {
+      Alert.alert('エラー', 'ユーザーIDは4文字以上20文字以下にしてください');
       return;
     }
     if (password !== confirmPassword) {
@@ -31,6 +41,7 @@ export function useSignup() {
 
     // 1. アカウント登録
     const { error: registerError } = await api.post('/register', {
+      user_id: userId,
       email,
       password,
       nickname: name,
@@ -41,7 +52,9 @@ export function useSignup() {
         '登録失敗',
         registerError === 'EMAIL_ALREADY_EXISTS'
           ? 'このメールアドレスは既に使われています'
-          : 'サーバーに接続できませんでした',
+          : registerError === 'USER_ID_ALREADY_EXISTS'
+          ? 'このユーザーIDは既に使われています'
+          : '入力内容を確認するか、しばらく経ってからやり直してください'
       );
       return;
     }
@@ -81,5 +94,7 @@ export function useSignup() {
     setShowConfirmPassword,
     loading,
     handleSignup,
+    userId,
+    setUserId,
   };
 }

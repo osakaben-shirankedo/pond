@@ -19,9 +19,13 @@ export class RegisterUseCase {
     const existing = await this.userRepo.findByEmail(input.email)
     if (existing) throw new Error('EMAIL_ALREADY_EXISTS')
 
+    const existingUserId = await this.userRepo.findByUserId(input.user_id)
+    if (existingUserId) throw new Error('USER_ID_ALREADY_EXISTS')
+
     const now = new Date().toISOString()
     const user: User = {
       id: crypto.randomUUID(),
+      user_id: input.user_id,
       nickname: input.nickname,
       email: input.email,
       encrypted_password: await hashPassword(input.password),

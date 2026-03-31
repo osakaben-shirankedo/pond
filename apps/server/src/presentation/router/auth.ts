@@ -26,9 +26,10 @@ router.post('/register', async (c) => {
 
   try {
     const user = await useCase.execute(parsed.data)
-    return c.json({ id: user.id, email: user.email, nickname: user.nickname }, 201)
+    return c.json({ id: user.id, user_id: user.user_id, email: user.email, nickname: user.nickname }, 201)
   } catch (e) {
     if (e instanceof Error && e.message === 'EMAIL_ALREADY_EXISTS') return c.json({ error: 'EMAIL_ALREADY_EXISTS' }, 409)
+    if (e instanceof Error && e.message === 'USER_ID_ALREADY_EXISTS') return c.json({ error: 'USER_ID_ALREADY_EXISTS' }, 409)
     throw e
   }
 })

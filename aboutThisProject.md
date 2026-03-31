@@ -260,6 +260,7 @@ emailとpasswordを入力するフォーム。
 #### User
 
 - id: string
+- user_id: string
 - nickname: string
 - email: string
 - encrypted_password: string

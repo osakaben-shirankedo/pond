@@ -6,6 +6,7 @@ import { users } from '../db/schema'
 
 type UserRow = {
   id: string
+  user_id: string
   nickname: string
   email: string
   encrypted_password: string
@@ -23,6 +24,11 @@ export class D1UserRepository implements IUserRepository {
 
   async findById(id: string): Promise<User | null> {
     const result = await this.db.select().from(users).where(eq(users.id, id)).get()
+    return result ? rowToUser(result as UserRow) : null
+  }
+
+  async findByUserId(userId: string): Promise<User | null> {
+    const result = await this.db.select().from(users).where(eq(users.user_id, userId)).get()
     return result ? rowToUser(result as UserRow) : null
   }
 

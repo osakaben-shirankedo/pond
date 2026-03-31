@@ -20,6 +20,8 @@ const { width } = Dimensions.get('window');
 
 export default function SignupScreen() {
   const {
+    userId,
+    setUserId,
     name,
     setName,
     email,
@@ -62,6 +64,23 @@ export default function SignupScreen() {
           {/* Card */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>新規登録</Text>
+
+            {/* User ID */}
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>ユーザーID</Text>
+              <View style={styles.inputWrap}>
+                <Ionicons name="at-outline" size={18} color={Colors.onSurfaceVariant} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  value={userId}
+                  onChangeText={setUserId}
+                  placeholder="半角英数字（4文字以上）"
+                  placeholderTextColor={Colors.outlineVariant}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+            </View>
 
             {/* Name */}
             <View style={styles.field}>
