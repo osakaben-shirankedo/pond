@@ -12,29 +12,16 @@ import {
   type LevelKey,
   type FieldId,
 } from '@/models/assessment';
-import { getPondIdsForFieldLevel, assignPondId } from '@/models/pond-instance';
+import { assignPondId } from '@/models/pond-instance';
+import { api } from '@/services/api';
+import { authStorage } from '@/services/auth';
 
-const SERVER_URL = 'http://localhost:8787';
-
-async function fetchAiAssignedPond(
-  field: string,
-  level: string,
-  purpose: string,
-  pondIds: string[]
-): Promise<string> {
-  try {
-    const res = await fetch(`${SERVER_URL}/ike/assign`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ field, level, purpose, pondIds }),
-    });
-    if (!res.ok) throw new Error('server error');
-    const data = await res.json() as { pondId: string };
-    return data.pondId;
-  } catch {
-    return assignPondId(field, level);
-  }
-}
+type ServerIke = {
+  id: string;
+  ike_name: string;
+  member_ids: string[];
+  chat_room_id: string;
+};
 
 export function useAssessment(field: FieldId | undefined, queue: string | undefined) {
   const resolvedField = field ?? 'default';
@@ -108,10 +95,27 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
     const resolvedFieldId = field ?? 'programming';
     const lv = judgedLevel!;
 
-    const pondIds = getPondIdsForFieldLevel(resolvedFieldId, lv);
-    const pondId = pondIds.length > 0
-      ? await fetchAiAssignedPond(resolvedFieldId, lv, purpose, pondIds)
-      : assignPondId(resolvedFieldId, lv);
+    let pondId: string;
+
+    const token = await authStorage.getToken();
+    if (token) {
+      // サーバーに申し込み → サーバーが池にアサインして返す
+      const { data, error } = await api.post<ServerIke>('/ike/apply', {
+        field: resolvedFieldId,
+        level: lv,
+        purpose,
+      }, token);
+
+      if (data && !error) {
+        pondId = data.id;
+      } else {
+        // 利用可能な池がない or エラー → ローカルフォールバック
+        pondId = assignPondId(resolvedFieldId, lv);
+      }
+    } else {
+      // 未ログイン → ローカルアサイン
+      pondId = assignPondId(resolvedFieldId, lv);
+    }
 
     const existingStored = await AsyncStorage.getItem('pond_ponds');
     const existing: { field: string; level: LevelKey; pondId: string }[] = existingStored

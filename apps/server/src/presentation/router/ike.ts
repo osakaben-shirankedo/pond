@@ -12,6 +12,7 @@ import { EditMessageUseCase } from '../../application/ike/editMessage'
 import { DeleteMessageUseCase } from '../../application/ike/deleteMessage'
 import { ReplyMessageUseCase } from '../../application/ike/replyMessage'
 import { JoinIkeUseCase } from '../../application/ike/joinIke'
+import { ApplyIkeUseCase } from '../../application/ike/applyIke'
 import { PostMessageInputSchema } from '../../domain/message/entity'
 import { authMiddleware } from '../middleware/auth'
 import type { Env } from '../../index'
@@ -142,6 +143,40 @@ router.get('/list', async (c) => {
   const userRepo = new D1UserRepository(db)
   const ikes = await new GetIkeListUseCase(ikeRepo, userRepo).execute(c.get('userId'))
   return c.json(ikes)
+})
+
+router.get('/available', async (c) => {
+  const db = drizzle(c.env.POND_DB)
+  const ikeRepo = new D1IkeRepository(db)
+  const ikes = await ikeRepo.findAvailable(c.get('userId'))
+  return c.json(ikes)
+})
+
+router.post('/apply', async (c) => {
+  const body = await c.req.json()
+  const parsed = z.object({
+    field: z.string(),
+    level: z.string(),
+    purpose: z.string(),
+  }).safeParse(body)
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
+
+  const db = drizzle(c.env.POND_DB)
+  const ikeRepo = new D1IkeRepository(db)
+  const userRepo = new D1UserRepository(db)
+  try {
+    const ike = await new ApplyIkeUseCase(ikeRepo, userRepo, c.env.CLAUDE_API_KEY ?? '').execute(
+      c.get('userId'),
+      parsed.data.field,
+      parsed.data.level,
+      parsed.data.purpose,
+    )
+    return c.json(ike, 201)
+  } catch (e) {
+    if (e instanceof Error && e.message === 'NO_IKE_AVAILABLE') return c.json({ error: 'NO_IKE_AVAILABLE' }, 404)
+    if (e instanceof Error && e.message === 'USER_NOT_FOUND') return c.json({ error: 'USER_NOT_FOUND' }, 404)
+    throw e
+  }
 })
 
 router.get('/:ike_id/status', async (c) => {

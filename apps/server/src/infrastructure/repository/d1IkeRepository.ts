@@ -37,6 +37,11 @@ export class D1IkeRepository implements IIkeRepository {
     return (results as IkeRow[]).map(rowToIke).filter(ike => ike.member_ids.includes(userId))
   }
 
+  async findAvailable(userId: string): Promise<Ike[]> {
+    const results = await this.db.select().from(ikes).all()
+    return (results as IkeRow[]).map(rowToIke).filter(ike => !ike.member_ids.includes(userId))
+  }
+
   async findAll(): Promise<Ike[]> {
     const results = await this.db.select().from(ikes).all()
     return (results as IkeRow[]).map(rowToIke)
