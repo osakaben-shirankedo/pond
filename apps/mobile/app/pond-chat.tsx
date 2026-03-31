@@ -124,8 +124,12 @@ export default function PondChatScreen() {
     }
     return (
       <View style={styles.rowOther}>
-        {/* AvatarSprite で表示 */}
-        <AvatarSprite presetId={item.avatarId ?? 'fishbowl'} size={34} />
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={() => router.push({ pathname: '/user-profile', params: { userName: item.user, avatarId: item.avatarId ?? 'fishbowl' } })}
+        >
+          <AvatarSprite presetId={item.avatarId ?? 'fishbowl'} size={34} />
+        </TouchableOpacity>
         <View style={styles.bubbleOtherGroup}>
           <View style={styles.senderRow}>
             <Text style={styles.senderName}>{item.user}</Text>
