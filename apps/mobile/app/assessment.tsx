@@ -145,11 +145,14 @@ export default function AssessmentScreen() {
                 end={{ x: 1, y: 0 }}
                 style={styles.enterBtnGradient}
               >
-                <Text style={styles.enterBtnText}>
-                  {nextField
-                    ? `次の池へ：${nextFieldLabel} →`
-                    : '池に入る 🌊'}
-                </Text>
+                {nextField ? (
+                  <Text style={styles.enterBtnText}>{`次の池へ：${nextFieldLabel} →`}</Text>
+                ) : (
+                  <Text style={styles.enterBtnText}>
+                    {'池に入る '}
+                    <Text style={{ fontFamily: undefined }}>🌊</Text>
+                  </Text>
+                )}
               </LinearGradient>
             </TouchableOpacity>
           )}

@@ -787,7 +787,7 @@ const styles = StyleSheet.create({
   // AI魚
   aiFishRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm, maxWidth: width * 0.82, marginVertical: 2 },
   aiFishAvatar: { width: 34, height: 34, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center' },
-  aiFishAvatarText: { fontSize: 18 },
+  aiFishAvatarText: { fontSize: 18, fontFamily: undefined },
   aiFishBubbleWrap: { flex: 1, gap: 3 },
   aiFishSenderRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginLeft: 2 },
   aiFishSenderName: { fontFamily: 'Inter_700Bold', fontSize: 11, color: '#1ac6c6' },
@@ -814,13 +814,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     gap: Spacing.sm,
   },
-  stagnantBannerEmoji: { fontSize: 18 },
+  stagnantBannerEmoji: { fontSize: 18, fontFamily: undefined },
   stagnantBannerText: { flex: 1, fontFamily: 'Inter_400Regular', fontSize: 12, color: '#1a7070' },
   stagnantBannerAction: { fontFamily: 'Inter_700Bold', fontSize: 12, color: '#1ac6c6' },
 
   // 魚ボタン
   fishBtn: { width: 36, height: 36, borderRadius: Radius.full, backgroundColor: '#e6fafa', alignItems: 'center', justifyContent: 'center', marginBottom: 1 },
-  fishBtnText: { fontSize: 18 },
+  fishBtnText: { fontSize: 18, fontFamily: undefined },
 
   // 退出メニュー
   menuSheet: {
