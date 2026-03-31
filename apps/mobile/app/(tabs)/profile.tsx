@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, TextInput, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, TextInput, Modal, KeyboardAvoidingView, Platform, Switch, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +28,56 @@ export default function ProfileScreen() {
   const [editVisible, setEditVisible] = useState(false);
   const [editName, setEditName] = useState('');
   const [editBio, setEditBio] = useState('');
+
+  // 設定モーダル
+  const [settingModal, setSettingModal] = useState<'notifications' | 'privacy' | 'help' | null>(null);
+
+  // プッシュ通知設定
+  const [notifNewMessage,  setNotifNewMessage]  = useState(true);
+  const [notifChallenge,   setNotifChallenge]   = useState(true);
+  const [notifLike,        setNotifLike]        = useState(true);
+  const [notifComment,     setNotifComment]     = useState(true);
+
+  // プライバシー設定
+  const [privacyProfile, setPrivacyProfile] = useState(true);  // プロフィール公開
+  const [privacyActivity, setPrivacyActivity] = useState(true); // アクティビティ公開
+
+  const NOTIF_KEYS = {
+    newMessage: 'notif_new_message',
+    challenge:  'notif_challenge',
+    like:       'notif_like',
+    comment:    'notif_comment',
+  };
+  const PRIVACY_KEYS = {
+    profile:  'privacy_profile',
+    activity: 'privacy_activity',
+  };
+
+  useEffect(() => {
+    AsyncStorage.multiGet([
+      NOTIF_KEYS.newMessage, NOTIF_KEYS.challenge, NOTIF_KEYS.like, NOTIF_KEYS.comment,
+      PRIVACY_KEYS.profile, PRIVACY_KEYS.activity,
+    ]).then((pairs) => {
+      const map = Object.fromEntries(pairs.map(([k, v]) => [k, v]));
+      if (map[NOTIF_KEYS.newMessage]  !== null) setNotifNewMessage(map[NOTIF_KEYS.newMessage]  !== 'false');
+      if (map[NOTIF_KEYS.challenge]   !== null) setNotifChallenge(map[NOTIF_KEYS.challenge]    !== 'false');
+      if (map[NOTIF_KEYS.like]        !== null) setNotifLike(map[NOTIF_KEYS.like]              !== 'false');
+      if (map[NOTIF_KEYS.comment]     !== null) setNotifComment(map[NOTIF_KEYS.comment]        !== 'false');
+      if (map[PRIVACY_KEYS.profile]   !== null) setPrivacyProfile(map[PRIVACY_KEYS.profile]   !== 'false');
+      if (map[PRIVACY_KEYS.activity]  !== null) setPrivacyActivity(map[PRIVACY_KEYS.activity] !== 'false');
+    });
+  }, []);
+
+  const toggleNotif = async (key: string, value: boolean) => {
+    await AsyncStorage.setItem(key, String(value));
+  };
+  const togglePrivacy = async (key: string, value: boolean) => {
+    await AsyncStorage.setItem(key, String(value));
+  };
+
+  const handleSettingItem = (action: string) => {
+    setSettingModal(action as 'notifications' | 'privacy' | 'help');
+  };
 
   useEffect(() => {
     AsyncStorage.multiGet([PROFILE_NAME_KEY, PROFILE_BIO_KEY]).then(([[, name], [, b]]) => {
@@ -124,7 +174,7 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>設定</Text>
           <View style={styles.settingsCard}>
             {SETTINGS_ITEMS.map((item, i) => (
-              <TouchableOpacity key={i} style={styles.settingsRow}>
+              <TouchableOpacity key={i} style={styles.settingsRow} onPress={() => handleSettingItem(item.action)}>
                 <Ionicons name={item.iconName} size={20} color={Colors.onSurfaceVariant} />
                 <Text style={styles.settingsLabel}>{item.label}</Text>
                 <Ionicons name="chevron-forward" size={18} color={Colors.onSurfaceVariant} />
@@ -188,6 +238,103 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+      {/* ── プッシュ通知モーダル ── */}
+      <Modal visible={settingModal === 'notifications'} animationType="slide" transparent>
+        <View style={styles.modalWrap}>
+          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setSettingModal(null)} />
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>プッシュ通知</Text>
+            {[
+              { label: '新着メッセージ', value: notifNewMessage, key: NOTIF_KEYS.newMessage, set: setNotifNewMessage },
+              { label: 'チャレンジ参加・クリア', value: notifChallenge, key: NOTIF_KEYS.challenge, set: setNotifChallenge },
+              { label: 'いいね', value: notifLike, key: NOTIF_KEYS.like, set: setNotifLike },
+              { label: 'コメント', value: notifComment, key: NOTIF_KEYS.comment, set: setNotifComment },
+            ].map((item) => (
+              <View key={item.key} style={styles.toggleRow}>
+                <Text style={styles.toggleLabel}>{item.label}</Text>
+                <Switch
+                  value={item.value}
+                  onValueChange={(v) => { item.set(v); toggleNotif(item.key, v); }}
+                  trackColor={{ false: Colors.outlineVariant, true: Colors.primaryFixedDim }}
+                  thumbColor={item.value ? Colors.primary : Colors.surfaceContainerHigh}
+                />
+              </View>
+            ))}
+            <TouchableOpacity onPress={() => setSettingModal(null)} style={styles.cancelBtn}>
+              <Text style={styles.cancelBtnText}>閉じる</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── プライバシー設定モーダル ── */}
+      <Modal visible={settingModal === 'privacy'} animationType="slide" transparent>
+        <View style={styles.modalWrap}>
+          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setSettingModal(null)} />
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>プライバシー設定</Text>
+            {[
+              { label: 'プロフィールを公開する', desc: '他のメンバーがあなたのプロフィールを閲覧できます', value: privacyProfile, key: PRIVACY_KEYS.profile, set: setPrivacyProfile },
+              { label: 'アクティビティを公開する', desc: '投稿・チャレンジ参加履歴が他のメンバーに見えます', value: privacyActivity, key: PRIVACY_KEYS.activity, set: setPrivacyActivity },
+            ].map((item) => (
+              <View key={item.key} style={styles.toggleRowLarge}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.toggleLabel}>{item.label}</Text>
+                  <Text style={styles.toggleDesc}>{item.desc}</Text>
+                </View>
+                <Switch
+                  value={item.value}
+                  onValueChange={(v) => { item.set(v); togglePrivacy(item.key, v); }}
+                  trackColor={{ false: Colors.outlineVariant, true: Colors.primaryFixedDim }}
+                  thumbColor={item.value ? Colors.primary : Colors.surfaceContainerHigh}
+                />
+              </View>
+            ))}
+            <TouchableOpacity onPress={() => setSettingModal(null)} style={styles.cancelBtn}>
+              <Text style={styles.cancelBtnText}>閉じる</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── ヘルプモーダル ── */}
+      <Modal visible={settingModal === 'help'} animationType="slide" transparent>
+        <View style={styles.modalWrap}>
+          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setSettingModal(null)} />
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>ヘルプ</Text>
+            {[
+              { icon: 'water-outline' as const,         title: '池とは？',           body: '同じ分野・レベルの仲間と学ぶグループです。チャットで交流したり、チャレンジに一緒に挑戦できます。' },
+              { icon: 'flash-outline' as const,         title: 'チャレンジとは？',   body: '毎週更新されるお題に回答して仲間と競いましょう。クリアするとポイントが貯まります。' },
+              { icon: 'fish-outline' as const,          title: 'AI魚とは？',         body: '池の会話が止まったときに話題を提供してくれるAIです。チャット画面の🐟ボタンから呼び出せます。' },
+              { icon: 'star-outline' as const,          title: 'ポイントとは？',     body: 'チャレンジをクリアすると獲得できます。池内ランキングに反映されます。' },
+              { icon: 'help-circle-outline' as const,   title: 'お問い合わせ',       body: 'ご不明な点はサポートまでご連絡ください。', isLink: true },
+            ].map((item, i) => (
+              <TouchableOpacity
+                key={i}
+                style={styles.helpItem}
+                activeOpacity={item.isLink ? 0.7 : 1}
+                onPress={item.isLink ? () => Linking.openURL('mailto:support@pond-app.example') : undefined}
+              >
+                <View style={styles.helpIconWrap}>
+                  <Ionicons name={item.icon} size={20} color={Colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.helpTitle}>{item.title}</Text>
+                  <Text style={styles.helpBody}>{item.body}</Text>
+                </View>
+                {item.isLink && <Ionicons name="chevron-forward" size={16} color={Colors.outlineVariant} />}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity onPress={() => setSettingModal(null)} style={styles.cancelBtn}>
+              <Text style={styles.cancelBtnText}>閉じる</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -309,4 +456,12 @@ const styles = StyleSheet.create({
   settingsLabel: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 15, color: Colors.onSurface },
   logoutBtn: { padding: Spacing.lg, alignItems: 'center' },
   logoutText: { fontFamily: 'Inter_400Regular', fontSize: 13, color: Colors.onSurfaceVariant, textDecorationLine: 'underline' },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow },
+  toggleLabel: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 15, color: Colors.onSurface },
+  toggleDesc: { fontFamily: 'Inter_400Regular', fontSize: 12, color: Colors.onSurfaceVariant, marginTop: 2 },
+  toggleRowLarge: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow },
+  helpItem: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md, paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainerLow },
+  helpIconWrap: { width: 36, height: 36, borderRadius: Radius.full, backgroundColor: Colors.primaryFixed, alignItems: 'center', justifyContent: 'center' },
+  helpTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: Colors.onSurface },
+  helpBody: { fontFamily: 'Inter_400Regular', fontSize: 12, color: Colors.onSurfaceVariant, lineHeight: 18, marginTop: 2 },
 });
