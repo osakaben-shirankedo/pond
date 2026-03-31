@@ -202,7 +202,7 @@ export default function PondChatScreen() {
 
       {/* Header */}
       <BlurView intensity={20} tint="light" style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)')} style={styles.backBtn} hitSlop={12}>
           <Ionicons name="chevron-back" size={24} color={Colors.primary} />
         </TouchableOpacity>
         <View style={styles.headerIcon}>
