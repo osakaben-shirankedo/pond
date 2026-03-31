@@ -60,7 +60,7 @@ export function useSignup() {
     }
 
     // 2. ログインしてトークン取得
-    const { data: loginData, error: loginError } = await api.post<{ token: string }>('/login', {
+    const { data: loginData, error: loginError } = await api.post<{ token: string; userId: string }>('/login', {
       email,
       password,
     });
@@ -71,6 +71,7 @@ export function useSignup() {
       return;
     }
     await authStorage.setToken(loginData.token);
+    await authStorage.setUserId(loginData.userId);
 
     // 3. プロフィール作成（名前だけ）
     await api.post('/register/profile', { name }, loginData.token);

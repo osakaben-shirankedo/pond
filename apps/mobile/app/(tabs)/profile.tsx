@@ -16,6 +16,7 @@ export default function ProfileScreen() {
     ponds, avatarId, pickerVisible,
     openPicker, closePicker, selectAvatar,
     STATS, SETTINGS_ITEMS, handleLogout, handleJoinPond,
+    displayName, handle, bio,
   } = useProfile();
 
   return (
@@ -34,9 +35,9 @@ export default function ProfileScreen() {
               <Ionicons name="pencil" size={11} color={Colors.onPrimary} />
             </View>
           </TouchableOpacity>
-          <Text style={styles.displayName}>かわうそユーザー</Text>
-          <Text style={styles.handle}>@pond_user</Text>
-          <Text style={styles.bio}>学習するすべての人に、同じレベルの仲間を。</Text>
+          <Text style={styles.displayName}>{displayName}</Text>
+          {handle ? <Text style={styles.handle}>{handle}</Text> : null}
+          {bio ? <Text style={styles.bio}>{bio}</Text> : null}
         </View>
 
         <AvatarPicker

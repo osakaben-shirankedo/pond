@@ -108,8 +108,10 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
 
       if (data && !error) {
         pondId = data.id;
+        console.log('[Assessment] server pond assigned:', pondId);
       } else {
         // 利用可能な池がない or エラー → ローカルフォールバック
+        console.log('[Assessment] /ike/apply failed, error:', error, '| fallback to local');
         pondId = assignPondId(resolvedFieldId, lv);
       }
     } else {

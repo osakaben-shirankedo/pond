@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { type PondEntry } from '@/models/pond';
 import { buildStats, SETTINGS_ITEMS, DEFAULT_AVATAR_ID } from '@/models/profile';
 import { POND_POINTS_KEY } from '@/models/points';
@@ -10,6 +10,7 @@ import { authStorage } from '@/services/auth';
 type ServerProfile = {
   id: string;
   user_id: string;
+  handle: string;
   name: string;
   bio: string;
   avatar: string;
@@ -22,7 +23,7 @@ export function useProfile() {
   const [profile, setProfile] = useState<ServerProfile | null>(null);
   const [myPoints, setMyPoints] = useState(0);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     Promise.all([
       AsyncStorage.getItem('pond_ponds'),
       AsyncStorage.getItem('pond_avatar'),
@@ -37,13 +38,12 @@ export function useProfile() {
         api.get<ServerProfile>('/profile', token).then(({ data }) => {
           if (data) {
             setProfile(data);
-            // サーバーのアバターをローカルに反映
             if (data.avatar && data.avatar !== '') setAvatarId(data.avatar);
           }
         });
       }
     });
-  }, []);
+  }, []));
 
   const selectAvatar = async (id: string) => {
     setAvatarId(id);
@@ -81,5 +81,8 @@ export function useProfile() {
     SETTINGS_ITEMS,
     handleLogout,
     handleJoinPond,
+    displayName: profile?.name ?? 'ユーザー',
+    handle: profile?.handle ? `@${profile.handle}` : '',
+    bio: profile?.bio ?? '',
   };
 }

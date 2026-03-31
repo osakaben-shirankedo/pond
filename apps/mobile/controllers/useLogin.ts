@@ -16,7 +16,7 @@ export function useLogin() {
       return;
     }
     setLoading(true);
-    const { data, error } = await api.post<{ token: string }>('/login', { email, password });
+    const { data, error } = await api.post<{ token: string; userId: string }>('/login', { email, password });
     if (error || !data) {
       setLoading(false);
       Alert.alert(
@@ -26,6 +26,7 @@ export function useLogin() {
       return;
     }
     await authStorage.setToken(data.token);
+    await authStorage.setUserId(data.userId);
 
     // プロフィールが存在するか確認してナビゲート
     const { error: profileError } = await api.get('/profile', data.token);

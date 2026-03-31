@@ -49,8 +49,10 @@ export function usePonds() {
       setUnreadPondIds(unreadStored ? JSON.parse(unreadStored) : []);
 
       const token = await authStorage.getToken();
+      console.log('[Ponds] token exists:', !!token);
       if (token) {
-        const { data } = await api.get<ServerIke[]>('/ike/list', token);
+        const { data, error } = await api.get<ServerIke[]>('/ike/list', token);
+        console.log('[Ponds] /ike/list result:', data, 'error:', error);
         if (data && data.length > 0) {
           const serverPonds = data.map(serverIkeToPondEntry);
           const localPondIds = new Set(localPonds.map((p) => p.pondId));

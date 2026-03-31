@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { D1IkeRepository } from '../../infrastructure/repository/d1IkeRepository'
 import { D1MessageRepository } from '../../infrastructure/repository/d1MessageRepository'
 import { D1UserRepository } from '../../infrastructure/repository/d1UserRepository'
+import { D1ProfileRepository } from '../../infrastructure/repository/d1ProfileRepository'
 import { GetIkeListUseCase } from '../../application/ike/getIkeList'
 import { GetIkeStatusUseCase } from '../../application/ike/getIkeStatus'
 import { GetIkeChatUseCase } from '../../application/ike/getIkeChat'
@@ -177,6 +178,16 @@ router.post('/apply', async (c) => {
     if (e instanceof Error && e.message === 'USER_NOT_FOUND') return c.json({ error: 'USER_NOT_FOUND' }, 404)
     throw e
   }
+})
+
+router.get('/:ike_id/members', async (c) => {
+  const db = drizzle(c.env.POND_DB)
+  const ikeRepo = new D1IkeRepository(db)
+  const profileRepo = new D1ProfileRepository(db)
+  const ike = await ikeRepo.findById(c.req.param('ike_id'))
+  if (!ike) return c.json({ error: 'IKE_NOT_FOUND' }, 404)
+  const profiles = await profileRepo.findByUserIds(ike.member_ids)
+  return c.json(profiles.map((p) => ({ user_id: p.user_id, name: p.name, avatar: p.avatar })))
 })
 
 router.get('/:ike_id/status', async (c) => {

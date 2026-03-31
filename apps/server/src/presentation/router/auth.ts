@@ -63,7 +63,7 @@ router.post('/login', async (c) => {
       { sub: userId, exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 },
       c.env.JWT_SECRET
     )
-    return c.json({ token })
+    return c.json({ token, userId })
   } catch (e) {
     if (e instanceof Error && e.message === 'INVALID_CREDENTIALS') return c.json({ error: 'INVALID_CREDENTIALS' }, 401)
     throw e

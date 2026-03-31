@@ -6,12 +6,15 @@ import Constants from 'expo-constants'
 // - 実機 → PCのLAN IP (MetroのhostUriから取得)
 // 本番時: EXPO_PUBLIC_API_URL を使用
 function getBaseUrl(): string {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL
+  }
   if (__DEV__) {
     const hostUri = Constants.expoConfig?.hostUri
     const host = hostUri ? hostUri.split(':')[0] : 'localhost'
     return `http://${host}:8787`
   }
-  return process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8787'
+  return 'http://localhost:8787'
 }
 
 const BASE_URL = getBaseUrl()
