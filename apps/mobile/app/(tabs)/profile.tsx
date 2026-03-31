@@ -1,13 +1,18 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, TextInput, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+import { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, Radius, Spacing, Levels } from '@/constants/theme';
 import { FieldIcon } from '@/components/ui/field-icon';
 import { AvatarSprite } from '@/components/avatar-sprite';
 import { AvatarPicker } from '@/components/avatar-picker';
 import { FIELD_LABELS } from '@/models/field';
 import { useProfile } from '@/controllers/useProfile';
+
+export const PROFILE_NAME_KEY = 'pond_display_name';
+export const PROFILE_BIO_KEY = 'pond_bio';
 
 const { width } = Dimensions.get('window');
 
@@ -17,6 +22,34 @@ export default function ProfileScreen() {
     openPicker, closePicker, selectAvatar,
     STATS, SETTINGS_ITEMS, handleLogout, handleJoinPond,
   } = useProfile();
+
+  const [displayName, setDisplayName] = useState('かわうそユーザー');
+  const [bio, setBio] = useState('学習するすべての人に、同じレベルの仲間を。');
+  const [editVisible, setEditVisible] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editBio, setEditBio] = useState('');
+
+  useEffect(() => {
+    AsyncStorage.multiGet([PROFILE_NAME_KEY, PROFILE_BIO_KEY]).then(([[, name], [, b]]) => {
+      if (name) setDisplayName(name);
+      if (b) setBio(b);
+    });
+  }, []);
+
+  const openEdit = () => {
+    setEditName(displayName);
+    setEditBio(bio);
+    setEditVisible(true);
+  };
+
+  const saveEdit = async () => {
+    const trimName = editName.trim() || displayName;
+    const trimBio = editBio.trim();
+    setDisplayName(trimName);
+    setBio(trimBio);
+    await AsyncStorage.multiSet([[PROFILE_NAME_KEY, trimName], [PROFILE_BIO_KEY, trimBio]]);
+    setEditVisible(false);
+  };
 
   return (
     <View style={styles.container}>
@@ -34,9 +67,14 @@ export default function ProfileScreen() {
               <Ionicons name="pencil" size={11} color={Colors.onPrimary} />
             </View>
           </TouchableOpacity>
-          <Text style={styles.displayName}>かわうそユーザー</Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.displayName}>{displayName}</Text>
+            <TouchableOpacity onPress={openEdit} style={styles.editNameBtn} hitSlop={8}>
+              <Ionicons name="pencil-outline" size={16} color={Colors.primary} />
+            </TouchableOpacity>
+          </View>
           <Text style={styles.handle}>@pond_user</Text>
-          <Text style={styles.bio}>学習するすべての人に、同じレベルの仲間を。</Text>
+          <Text style={styles.bio}>{bio || '自己紹介を追加しよう'}</Text>
         </View>
 
         <AvatarPicker
@@ -102,6 +140,55 @@ export default function ProfileScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* 編集モーダル */}
+      <Modal visible={editVisible} animationType="slide" transparent>
+        <KeyboardAvoidingView style={styles.modalWrap} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setEditVisible(false)} />
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>プロフィールを編集</Text>
+
+            <Text style={styles.inputLabel}>表示名</Text>
+            <TextInput
+              style={styles.textInput}
+              value={editName}
+              onChangeText={setEditName}
+              placeholder="表示名を入力"
+              placeholderTextColor={Colors.outlineVariant}
+              maxLength={30}
+              returnKeyType="next"
+            />
+
+            <Text style={styles.inputLabel}>自己紹介</Text>
+            <TextInput
+              style={[styles.textInput, styles.textInputMulti]}
+              value={editBio}
+              onChangeText={setEditBio}
+              placeholder="自己紹介を入力"
+              placeholderTextColor={Colors.outlineVariant}
+              multiline
+              maxLength={150}
+              textAlignVertical="top"
+            />
+            <Text style={styles.charCount}>{editBio.length} / 150</Text>
+
+            <TouchableOpacity onPress={saveEdit} style={styles.saveBtn}>
+              <LinearGradient
+                colors={[Colors.primary, Colors.primaryContainer]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.saveBtnGradient}
+              >
+                <Text style={styles.saveBtnText}>保存する</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setEditVisible(false)} style={styles.cancelBtn}>
+              <Text style={styles.cancelBtnText}>キャンセル</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -141,9 +228,40 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 20,
   },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   displayName: { fontFamily: 'PlusJakartaSans_800ExtraBold', fontSize: 22, color: Colors.onSurface },
+  editNameBtn: { width: 28, height: 28, borderRadius: Radius.full, backgroundColor: Colors.primaryFixed, alignItems: 'center', justifyContent: 'center' },
   handle: { fontFamily: 'Inter_400Regular', fontSize: 14, color: Colors.onSurfaceVariant },
   bio: { fontFamily: 'Inter_400Regular', fontSize: 14, color: Colors.onSurfaceVariant, textAlign: 'center', lineHeight: 22, marginTop: Spacing.xs },
+  modalWrap: { flex: 1, justifyContent: 'flex-end' },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalSheet: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    padding: Spacing.xl,
+    paddingBottom: 48,
+    gap: Spacing.md,
+  },
+  modalHandle: { width: 40, height: 4, borderRadius: Radius.full, backgroundColor: Colors.outlineVariant, alignSelf: 'center', marginBottom: Spacing.sm },
+  modalTitle: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 18, color: Colors.onSurface, textAlign: 'center' },
+  inputLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: Colors.onSurfaceVariant },
+  textInput: {
+    backgroundColor: Colors.surfaceContainerLow,
+    borderRadius: Radius.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 15,
+    color: Colors.onSurface,
+  },
+  textInputMulti: { minHeight: 100, textAlignVertical: 'top' },
+  charCount: { fontFamily: 'Inter_400Regular', fontSize: 11, color: Colors.outlineVariant, textAlign: 'right', marginTop: -Spacing.sm },
+  saveBtn: { borderRadius: Radius.full, overflow: 'hidden', marginTop: Spacing.sm },
+  saveBtnGradient: { paddingVertical: 14, alignItems: 'center', borderRadius: Radius.full },
+  saveBtnText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: '#fff' },
+  cancelBtn: { alignItems: 'center', paddingVertical: 10 },
+  cancelBtnText: { fontFamily: 'Inter_500Medium', fontSize: 15, color: Colors.onSurfaceVariant },
   statsCard: { flexDirection: 'row', borderRadius: Radius.xl, overflow: 'hidden', padding: Spacing.lg },
   statItem: { flex: 1, alignItems: 'center', gap: 4 },
   statItemBorder: { borderRightWidth: 1, borderRightColor: `${Colors.outlineVariant}66` },
