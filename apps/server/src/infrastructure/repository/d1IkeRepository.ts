@@ -26,6 +26,11 @@ export class D1IkeRepository implements IIkeRepository {
     return result ? rowToIke(result as IkeRow) : null
   }
 
+  async findByChatRoomId(chatRoomId: string): Promise<Ike | null> {
+    const result = await this.db.select().from(ikes).where(eq(ikes.chat_room_id, chatRoomId)).get()
+    return result ? rowToIke(result as IkeRow) : null
+  }
+
   async findByIds(ids: string[]): Promise<Ike[]> {
     if (ids.length === 0) return []
     const results = await this.db.select().from(ikes).where(inArray(ikes.id, ids)).all()

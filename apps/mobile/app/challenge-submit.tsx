@@ -7,128 +7,26 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState, useEffect, useRef } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { AvatarSprite } from '@/components/avatar-sprite';
-import {
-  CHALLENGES, SEED_PARTICIPANTS, SEED_SUBMISSIONS,
-  CHALLENGE_PARTICIPATING_KEY, CHALLENGE_SUBMISSION_KEY,
-  type ChallengeParticipant, type MySubmissionResult, type SeedSubmission,
-} from '@/models/challenges';
-import { POND_POINTS_KEY } from '@/models/points';
-import { addNotification } from '@/models/notifications';
+import { CHALLENGES, type ChallengeParticipant } from '@/models/challenges';
+import { useChallengeSubmit } from '@/controllers/useChallengeSubmit';
 
 const { width } = Dimensions.get('window');
-const SERVER_URL = 'http://localhost:8787';
 
 export default function ChallengeSubmitScreen() {
   const { challengeId, mode } = useLocalSearchParams<{ challengeId: string; mode?: string }>();
   const isTimelineMode = mode === 'timeline';
   const challenge = CHALLENGES.find((c) => c.id === challengeId);
 
-  const [answer, setAnswer] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<MySubmissionResult | null>(null);
-  const [showSubmissions, setShowSubmissions] = useState(false);
-  const [participants, setParticipants] = useState<ChallengeParticipant[]>([]);
-  const [isParticipating, setIsParticipating] = useState(false);
-  const [myAvatarId, setMyAvatarId] = useState('fishbowl');
-  const resultAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (!challengeId) return;
-    Promise.all([
-      AsyncStorage.getItem(CHALLENGE_PARTICIPATING_KEY),
-      AsyncStorage.getItem(CHALLENGE_SUBMISSION_KEY),
-      AsyncStorage.getItem('pond_avatar'),
-    ]).then(([partStr, subStr, avatarStr]) => {
-      // JOINED と PARTICIPATING を両方チェックして統一
-      const participatingIds: string[] = partStr ? JSON.parse(partStr) : [];
-      setIsParticipating(participatingIds.includes(challengeId));
-      if (subStr) {
-        const map: Record<string, MySubmissionResult> = JSON.parse(subStr);
-        if (map[challengeId]) setResult(map[challengeId]);
-      }
-      if (avatarStr) setMyAvatarId(avatarStr);
-    });
-
-    const seeds = SEED_PARTICIPANTS[challengeId] ?? [];
-    setParticipants(seeds);
-  }, [challengeId]);
-
-  const toggleParticipate = async () => {
-    if (!challengeId) return;
-    const partStr = await AsyncStorage.getItem(CHALLENGE_PARTICIPATING_KEY);
-    const ids: string[] = partStr ? JSON.parse(partStr) : [];
-    const next = isParticipating ? ids.filter((i) => i !== challengeId) : [...ids, challengeId];
-    setIsParticipating(!isParticipating);
-    await AsyncStorage.setItem(CHALLENGE_PARTICIPATING_KEY, JSON.stringify(next));
-
-    // メンバーリスト更新
-    const seeds = SEED_PARTICIPANTS[challengeId] ?? [];
-    setParticipants(seeds);
-  };
-
-  const handleSubmit = async () => {
-    if (!answer.trim() || !challenge || !challengeId) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`${SERVER_URL}/challenge/evaluate`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          field: challenge.field,
-          challengeTitle: challenge.title,
-          challengeDescription: challenge.description,
-          answer: answer.trim(),
-          isSubjective: challenge.isSubjective,
-        }),
-      });
-      const data = await res.json() as { pass: boolean; score?: number; comment: string };
-      const submissionResult: MySubmissionResult = {
-        answer: answer.trim(),
-        pass: data.pass,
-        score: data.score,
-        comment: data.comment,
-      };
-      setResult(submissionResult);
-
-      // 保存
-      const subStr = await AsyncStorage.getItem(CHALLENGE_SUBMISSION_KEY);
-      const map: Record<string, MySubmissionResult> = subStr ? JSON.parse(subStr) : {};
-      map[challengeId] = submissionResult;
-      await AsyncStorage.setItem(CHALLENGE_SUBMISSION_KEY, JSON.stringify(map));
-
-      // 合格ならポイント+1 & 通知
-      if (data.pass) {
-        const pts = parseInt((await AsyncStorage.getItem(POND_POINTS_KEY)) ?? '0', 10);
-        await AsyncStorage.setItem(POND_POINTS_KEY, String(pts + 1));
-        await addNotification({
-          type: 'challenge_pass',
-          fromUser: 'あなた',
-          fromAvatarId: myAvatarId,
-          text: `「${challenge?.title}」のチャレンジに成功しました！ +1ポイント`,
-        });
-      }
-
-      Animated.timing(resultAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
-    } catch {
-      setResult({ answer: answer.trim(), pass: false, comment: 'サーバーに接続できませんでした。再度お試しください。' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRetry = () => {
-    setResult(null);
-    setAnswer('');
-    resultAnim.setValue(0);
-  };
+  const {
+    answer, setAnswer, loading, result, showSubmissions, setShowSubmissions,
+    participants, isParticipating, myAvatarId, resultAnim,
+    toggleParticipate, handleSubmit, handleRetry, otherSubmissions,
+  } = useChallengeSubmit(challengeId, challenge);
 
   if (!challenge) return null;
 
-  const otherSubmissions: SeedSubmission[] = SEED_SUBMISSIONS[challengeId] ?? [];
   const meParticipant: ChallengeParticipant = { id: 'me', name: 'あなた', avatarId: myAvatarId, isMe: true };
   const allParticipants = isParticipating ? [meParticipant, ...participants] : participants;
 
@@ -284,7 +182,7 @@ export default function ChallengeSubmitScreen() {
               </LinearGradient>
             </TouchableOpacity>
           </View>
-        ) : !isTimelineMode ? (
+        ) : !isTimelineMode && result ? (
           <Animated.View style={[styles.section, { opacity: resultAnim }]}>
             <View style={[styles.resultCard, result.pass ? styles.resultCardPass : styles.resultCardFail]}>
               <Text style={styles.resultIcon}>{result.pass ? '⭕️' : '❌'}</Text>

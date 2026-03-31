@@ -84,6 +84,17 @@ ORMはDrizzle
 - OPENAI_API_KEY: string
 - OPENAI_API_BASE_URL: string (local llmを使用する予定)
 
+#### オブジェクト管理
+
+- ike
+  - chatRoomId (/ike/{:ike_id}/chatで使用するチャットのid)
+  - ...
+
+- ChatRoom
+  - これはDBとマッピングする。
+  - エンドポイントは `/ike/{:ike_id}/chat`
+  - ...
+
 #### endpoint
 
 - GET /health
@@ -96,8 +107,18 @@ ORMはDrizzle
   - ログイン
 - POST /logout
   - ログアウト
+
+- POST /ike/apply
+  - 質問の回答を送信し、池にアサインされる。
 - GET /ike/list
-  - 池の一覧
+  - マイ池の一覧
+  - response item
+    - id: string
+    - ikeName: string
+    - members_id: string[]
+    - level: string
+    - category: string
+    - description: string
 - GET /ike/:ike_id/status
   - 人数、レベル、特徴
 - GET /ike/:ike_id/chat

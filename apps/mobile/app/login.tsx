@@ -7,48 +7,27 @@ import {
   KeyboardAvoidingView,
   Platform,
   Dimensions,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { api } from '@/services/api';
-import { authStorage } from '@/services/auth';
+import { useLogin } from '@/controllers/useLogin';
 
 const { width } = Dimensions.get('window');
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('エラー', 'メールアドレスとパスワードを入力してください');
-      return;
-    }
-    setLoading(true);
-    const { data, error } = await api.post<{ token: string }>('/login', { email, password });
-    if (error || !data) {
-      setLoading(false);
-      Alert.alert('ログイン失敗', error === 'INVALID_CREDENTIALS' ? 'メールアドレスまたはパスワードが違います' : 'サーバーに接続できませんでした');
-      return;
-    }
-    await authStorage.setToken(data.token);
-
-    // プロフィールが存在するか確認してナビゲート
-    const { error: profileError } = await api.get('/profile', data.token);
-    setLoading(false);
-    if (profileError === 'PROFILE_NOT_FOUND') {
-      router.replace('/onboarding');
-    } else {
-      router.replace('/(tabs)');
-    }
-  };
+  const {
+    email,
+    setEmail,
+    password,
+    setPassword,
+    showPassword,
+    setShowPassword,
+    loading,
+    handleLogin,
+  } = useLogin();
 
   return (
     <LinearGradient

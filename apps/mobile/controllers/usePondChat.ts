@@ -225,7 +225,7 @@ export function usePondChat(field: string, level: string, pondId: string) {
 
     setText('');
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
-  }, [text, levelKey, isServerPond, pondId, myUserId, editingMsg, replyingTo]);
+  }, [text, levelKey, isServerPond, pondId, editingMsg, replyingTo]);
 
   const handleDelete = useCallback(async (msgId: string) => {
     if (isServerPond) {
@@ -257,6 +257,21 @@ export function usePondChat(field: string, level: string, pondId: string) {
     setText('');
   }, []);
 
+  const leavePond = useCallback(async () => {
+    if (isServerPond) {
+      const token = await authStorage.getToken();
+      if (token) {
+        await api.post(`/ike/${pondId}/leave`, {}, token);
+      }
+    }
+    const stored = await AsyncStorage.getItem('pond_ponds');
+    const ponds: Array<{ field: string; pondId?: string }> = stored ? JSON.parse(stored) : [];
+    await AsyncStorage.setItem(
+      'pond_ponds',
+      JSON.stringify(ponds.filter((p) => !(p.pondId === pondId || p.field === field)))
+    );
+  }, [isServerPond, pondId, field]);
+
   return {
     fieldLabel,
     levelKey,
@@ -280,5 +295,6 @@ export function usePondChat(field: string, level: string, pondId: string) {
     isStagnant,
     callAiFish,
     aiFishLoading,
+    leavePond,
   };
 }

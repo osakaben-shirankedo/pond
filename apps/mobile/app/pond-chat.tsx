@@ -8,17 +8,12 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { FieldIcon } from '@/components/ui/field-icon';
 import { AvatarSprite } from '@/components/avatar-sprite';
 import { LEVEL_GRADIENTS } from '@/models/pond';
 import { type ChatMessage } from '@/models/pond-chat';
 import { usePondChat } from '@/controllers/usePondChat';
-import { api } from '@/services/api';
-import { authStorage } from '@/services/auth';
-
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const { width } = Dimensions.get('window');
 
@@ -30,6 +25,7 @@ export default function PondChatScreen() {
     editingMsg, replyingTo,
     members, memberCount, myAvatarId, myUserId,
     ranking, activeChallenges, isStagnant, callAiFish, aiFishLoading,
+    leavePond,
   } = usePondChat(field ?? '', level ?? '澄み池', pondId ?? '');
 
   const [showMembers, setShowMembers] = useState(false);
@@ -40,18 +36,7 @@ export default function PondChatScreen() {
   const [msgMenuTarget, setMsgMenuTarget] = useState<ChatMessage | null>(null);
 
   const handleLeave = async () => {
-    if (pondId && UUID_REGEX.test(pondId)) {
-      const token = await authStorage.getToken();
-      if (token) {
-        await api.post(`/ike/${pondId}/leave`, {}, token);
-      }
-    }
-    const stored = await AsyncStorage.getItem('pond_ponds');
-    const ponds: Array<{ field: string; pondId?: string }> = stored ? JSON.parse(stored) : [];
-    await AsyncStorage.setItem(
-      'pond_ponds',
-      JSON.stringify(ponds.filter((p) => !(p.pondId === pondId || p.field === field)))
-    );
+    await leavePond();
     setShowMenu(false);
     setConfirmLeave(false);
     router.replace('/(tabs)/ponds');
