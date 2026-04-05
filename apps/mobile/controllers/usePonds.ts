@@ -7,7 +7,7 @@ import { assignPondId } from '@/models/pond-instance';
 import { POND_UNREAD_KEY } from '@/models/notifications';
 import { api } from '@/services/api';
 import { authStorage } from '@/services/auth';
-import type { LevelKey } from '@/constants/theme';
+import type { LevelKey } from '@/constants/levels';
 
 type ServerIke = {
   id: string;

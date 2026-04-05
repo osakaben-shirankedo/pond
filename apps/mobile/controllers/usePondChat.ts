@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { FlatList } from 'react-native';
 import { type ChatMessage, SEED_MESSAGES } from '@/models/pond-chat';
-import type { LevelKey } from '@/constants/theme';
+import type { LevelKey } from '@/constants/levels';
 import { FIELD_LABELS } from '@/models/field';
 import { getPondMembers, getPondInstance, getAvatarIdByName, type PondMember } from '@/models/pond-instance';
 import { getRankingForPond, type RankedMember, POND_POINTS_KEY } from '@/models/points';

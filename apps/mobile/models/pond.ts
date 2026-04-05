@@ -1,5 +1,5 @@
 import { Colors } from '@/constants/theme';
-import type { LevelKey } from '@/constants/theme';
+import type { LevelKey } from '@/constants/levels';
 
 export type PondEntry = {
   field: string;

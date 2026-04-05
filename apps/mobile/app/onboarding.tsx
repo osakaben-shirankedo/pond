@@ -2,7 +2,8 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Spacing, Fields } from '@/constants/theme';
+import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Fields } from '@/constants/fields';
 import { FieldIcon } from '@/components/ui/field-icon';
 import Animated from 'react-native-reanimated';
 import { useOnboarding } from '@/controllers/useOnboarding';

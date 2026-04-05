@@ -1,4 +1,4 @@
-import type { LevelKey } from '@/constants/theme';
+import type { LevelKey } from '@/constants/levels';
 
 export type ChatMessage = {
   id: string;

@@ -1,4 +1,4 @@
-import type { LevelKey } from '@/constants/theme';
+import type { LevelKey } from '@/constants/levels';
 import { FIELD_LABELS } from '@/models/field';
 
 export const MAX_CHARS = 280;

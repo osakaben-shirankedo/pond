@@ -1,5 +1,6 @@
-import type { LevelKey, FieldId } from '@/constants/theme';
-import { Levels } from '@/constants/theme';
+import type { LevelKey } from '@/constants/levels';
+import { Levels } from '@/constants/levels';
+import type { FieldId } from '@/constants/fields';
 import { FIELD_LABELS } from '@/models/field';
 
 export { FIELD_LABELS };

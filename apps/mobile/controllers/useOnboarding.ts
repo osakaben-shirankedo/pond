@@ -8,7 +8,7 @@ import {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import type { FieldId } from '@/constants/theme';
+import type { FieldId } from '@/constants/fields';
 
 export function useOnboarding() {
   const [selected, setSelected] = useState<FieldId[]>([]);
