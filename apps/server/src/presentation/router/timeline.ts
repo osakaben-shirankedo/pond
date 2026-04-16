@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { drizzle } from 'drizzle-orm/d1'
-import { z } from 'zod'
+import * as v from 'valibot'
 import { authMiddleware } from '../middleware/auth'
 import { D1TimelineRepository } from '../../infrastructure/repository/d1TimelineRepository'
 import { D1UserRepository } from '../../infrastructure/repository/d1UserRepository'
@@ -50,13 +50,13 @@ router.get('/', async (c) => {
 // 投稿
 router.post('/post', async (c) => {
   const body = await c.req.json()
-  const parsed = TimelinePostInputSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
+  const parsed = v.safeParse(TimelinePostInputSchema, body)
+  if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)
   const timelineRepo = new D1TimelineRepository(db)
 
-  const post = await new PostTimelineUseCase(timelineRepo).execute(c.get('userId'), parsed.data)
+  const post = await new PostTimelineUseCase(timelineRepo).execute(c.get('userId'), parsed.output)
   return c.json(post, 201)
 })
 
@@ -91,14 +91,14 @@ router.post('/unlike/:post_id', async (c) => {
 // リプライ
 router.post('/reply/:post_id', async (c) => {
   const body = await c.req.json()
-  const parsed = ReplyPostInputSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
+  const parsed = v.safeParse(ReplyPostInputSchema, body)
+  if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)
   const timelineRepo = new D1TimelineRepository(db)
 
   try {
-    const reply = await new ReplyPostUseCase(timelineRepo).execute(c.req.param('post_id'), c.get('userId'), parsed.data.content)
+    const reply = await new ReplyPostUseCase(timelineRepo).execute(c.req.param('post_id'), c.get('userId'), parsed.output.content)
     return c.json(reply, 201)
   } catch (e) {
     if (e instanceof Error && e.message === 'POST_NOT_FOUND') return c.json({ error: 'POST_NOT_FOUND' }, 404)

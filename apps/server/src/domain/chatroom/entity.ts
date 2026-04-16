@@ -1,8 +1,8 @@
-import { z } from 'zod'
+import * as v from 'valibot'
 
-export const ChatRoomSchema = z.object({
-  id: z.string(),
-  created_at: z.string(),
-  updated_at: z.string(),
+export const ChatRoomSchema = v.object({
+  id: v.string(),
+  created_at: v.string(),
+  updated_at: v.string(),
 })
-export type ChatRoom = z.infer<typeof ChatRoomSchema>
+export type ChatRoom = v.InferOutput<typeof ChatRoomSchema>

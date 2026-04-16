@@ -1,14 +1,14 @@
-import { z } from 'zod'
+import * as v from 'valibot'
 
-export const PurposeSchema = z.enum(['analyze_ike', 'asign_ike', 'create_ike'])
-export type Purpose = z.infer<typeof PurposeSchema>
+export const PurposeSchema = v.picklist(['analyze_ike', 'asign_ike', 'create_ike'])
+export type Purpose = v.InferOutput<typeof PurposeSchema>
 
-export const PromptSchema = z.object({
-  id: z.string(),
-  model: z.string(),
+export const PromptSchema = v.object({
+  id: v.string(),
+  model: v.string(),
   purpose: PurposeSchema,
-  content: z.string(),
-  created_at: z.string(),
-  updated_at: z.string(),
+  content: v.string(),
+  created_at: v.string(),
+  updated_at: v.string(),
 })
-export type Prompt = z.infer<typeof PromptSchema>
+export type Prompt = v.InferOutput<typeof PromptSchema>

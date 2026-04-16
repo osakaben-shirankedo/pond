@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { drizzle } from 'drizzle-orm/d1'
-import { z } from 'zod'
+import * as v from 'valibot'
 import { D1IkeRepository } from '../../infrastructure/repository/d1IkeRepository'
 import { D1MessageRepository } from '../../infrastructure/repository/d1MessageRepository'
 import { D1UserRepository } from '../../infrastructure/repository/d1UserRepository'
@@ -22,15 +22,15 @@ const router = new Hono<Env>()
 
 router.post('/assign', async (c) => {
   const body = await c.req.json()
-  const parsed = z.object({
-    field: z.string(),
-    level: z.string(),
-    purpose: z.string(),
-    pondIds: z.array(z.string()).min(1),
-  }).safeParse(body)
-  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
+  const parsed = v.safeParse(v.object({
+    field: v.string(),
+    level: v.string(),
+    purpose: v.string(),
+    pondIds: v.pipe(v.array(v.string()), v.minLength(1)),
+  }), body)
+  if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
-  const { field, level, purpose, pondIds } = parsed.data
+  const { field, level, purpose, pondIds } = parsed.output
 
   if (!c.env.CLAUDE_API_KEY) {
     return c.json({ pondId: pondIds[0] })
@@ -75,16 +75,16 @@ router.post('/assign', async (c) => {
 
 router.post('/ai-fish', async (c) => {
   const body = await c.req.json()
-  const parsed = z.object({
-    field: z.string(),
-    level: z.string(),
-    recentMessages: z.array(z.string()).default([]),
-    memberCount: z.number().default(10),
-    userMessageCount: z.number().default(0),
-  }).safeParse(body)
+  const parsed = v.safeParse(v.object({
+    field: v.string(),
+    level: v.string(),
+    recentMessages: v.optional(v.array(v.string()), []),
+    memberCount: v.optional(v.number(), 10),
+    userMessageCount: v.optional(v.number(), 0),
+  }), body)
   if (!parsed.success) return c.json({ error: 'BAD_REQUEST' }, 400)
 
-  const { field, level, recentMessages, memberCount, userMessageCount } = parsed.data
+  const { field, level, recentMessages, memberCount, userMessageCount } = parsed.output
 
   if (!c.env.CLAUDE_API_KEY) {
     const fallbacks = [
@@ -155,12 +155,12 @@ router.get('/available', async (c) => {
 
 router.post('/apply', async (c) => {
   const body = await c.req.json()
-  const parsed = z.object({
-    field: z.string(),
-    level: z.string(),
-    purpose: z.string(),
-  }).safeParse(body)
-  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
+  const parsed = v.safeParse(v.object({
+    field: v.string(),
+    level: v.string(),
+    purpose: v.string(),
+  }), body)
+  if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)
   const ikeRepo = new D1IkeRepository(db)
@@ -168,9 +168,9 @@ router.post('/apply', async (c) => {
   try {
     const ike = await new ApplyIkeUseCase(ikeRepo, userRepo, c.env.CLAUDE_API_KEY ?? '').execute(
       c.get('userId'),
-      parsed.data.field,
-      parsed.data.level,
-      parsed.data.purpose,
+      parsed.output.field,
+      parsed.output.level,
+      parsed.output.purpose,
     )
     return c.json(ike, 201)
   } catch (e) {
@@ -217,14 +217,14 @@ router.get('/:ike_id/chat', async (c) => {
 
 router.post('/:ike_id/chat/message', async (c) => {
   const body = await c.req.json()
-  const parsed = PostMessageInputSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
+  const parsed = v.safeParse(PostMessageInputSchema, body)
+  if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)
   const ikeRepo = new D1IkeRepository(db)
   const messageRepo = new D1MessageRepository(db)
   try {
-    const message = await new PostMessageUseCase(ikeRepo, messageRepo).execute(c.req.param('ike_id'), c.get('userId'), parsed.data)
+    const message = await new PostMessageUseCase(ikeRepo, messageRepo).execute(c.req.param('ike_id'), c.get('userId'), parsed.output)
     return c.json(message, 201)
   } catch (e) {
     if (e instanceof Error && e.message === 'IKE_NOT_FOUND') return c.json({ error: 'IKE_NOT_FOUND' }, 404)
@@ -235,13 +235,13 @@ router.post('/:ike_id/chat/message', async (c) => {
 
 router.post('/:ike_id/chat/:message_id/edit', async (c) => {
   const body = await c.req.json()
-  const parsed = z.object({ content: z.string().min(1) }).safeParse(body)
-  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
+  const parsed = v.safeParse(v.object({ content: v.pipe(v.string(), v.minLength(1)) }), body)
+  if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)
   const messageRepo = new D1MessageRepository(db)
   try {
-    const message = await new EditMessageUseCase(messageRepo).execute(c.req.param('message_id'), c.get('userId'), parsed.data.content)
+    const message = await new EditMessageUseCase(messageRepo).execute(c.req.param('message_id'), c.get('userId'), parsed.output.content)
     return c.json(message)
   } catch (e) {
     if (e instanceof Error && e.message === 'MESSAGE_NOT_FOUND') return c.json({ error: 'MESSAGE_NOT_FOUND' }, 404)
@@ -299,14 +299,14 @@ router.post('/:ike_id/leave', async (c) => {
 
 router.post('/:ike_id/chat/:message_id/reply', async (c) => {
   const body = await c.req.json()
-  const parsed = PostMessageInputSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
+  const parsed = v.safeParse(PostMessageInputSchema, body)
+  if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)
   const ikeRepo = new D1IkeRepository(db)
   const messageRepo = new D1MessageRepository(db)
   try {
-    const message = await new ReplyMessageUseCase(ikeRepo, messageRepo).execute(c.req.param('ike_id'), c.req.param('message_id'), c.get('userId'), parsed.data)
+    const message = await new ReplyMessageUseCase(ikeRepo, messageRepo).execute(c.req.param('ike_id'), c.req.param('message_id'), c.get('userId'), parsed.output)
     return c.json(message, 201)
   } catch (e) {
     if (e instanceof Error && e.message === 'IKE_NOT_FOUND') return c.json({ error: 'IKE_NOT_FOUND' }, 404)

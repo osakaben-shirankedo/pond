@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { z } from 'zod'
+import * as v from 'valibot'
 import { authMiddleware } from '../middleware/auth'
 import type { Env } from '../../index'
 
@@ -7,16 +7,16 @@ const router = new Hono<Env>()
 
 router.post('/evaluate', async (c) => {
   const body = await c.req.json()
-  const parsed = z.object({
-    field: z.string(),
-    challengeTitle: z.string(),
-    challengeDescription: z.string(),
-    answer: z.string(),
-    isSubjective: z.boolean(),
-  }).safeParse(body)
+  const parsed = v.safeParse(v.object({
+    field: v.string(),
+    challengeTitle: v.string(),
+    challengeDescription: v.string(),
+    answer: v.string(),
+    isSubjective: v.boolean(),
+  }), body)
   if (!parsed.success) return c.json({ error: 'INVALID_INPUT' }, 400)
 
-  const { field, challengeTitle, challengeDescription, answer, isSubjective } = parsed.data
+  const { field, challengeTitle, challengeDescription, answer, isSubjective } = parsed.output
 
   if (!c.env.CLAUDE_API_KEY) {
     return c.json({ pass: true, comment: 'よく頑張りました！（AI評価は未設定）' })

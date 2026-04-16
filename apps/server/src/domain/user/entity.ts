@@ -1,24 +1,24 @@
-import { z } from 'zod'
+import * as v from 'valibot'
 
-export const PublicRangeSchema = z.enum(['all', 'ike', 'profile'])
-export type PublicRange = z.infer<typeof PublicRangeSchema>
+export const PublicRangeSchema = v.picklist(['all', 'ike', 'profile'])
+export type PublicRange = v.InferOutput<typeof PublicRangeSchema>
 
-export const UserSchema = z.object({
-  id: z.string(),
-  user_id: z.string(),
-  nickname: z.string().min(1),
-  email: z.string().email(),
-  encrypted_password: z.string(),
-  belonging_ike_ids: z.array(z.string()).default([]),
-  created_at: z.string(),
-  updated_at: z.string(),
+export const UserSchema = v.object({
+  id: v.string(),
+  user_id: v.string(),
+  nickname: v.pipe(v.string(), v.minLength(1)),
+  email: v.pipe(v.string(), v.email()),
+  encrypted_password: v.string(),
+  belonging_ike_ids: v.optional(v.array(v.string()), []),
+  created_at: v.string(),
+  updated_at: v.string(),
 })
-export type User = z.infer<typeof UserSchema>
+export type User = v.InferOutput<typeof UserSchema>
 
-export const CreateUserInputSchema = z.object({
-  user_id: z.string().min(4).max(20).regex(/^[a-zA-Z0-9_]+$/, 'IDは半角英数字とアンダースコアのみ使用できます'),
-  nickname: z.string().min(1),
-  email: z.string().email(),
-  password: z.string().min(8),
+export const CreateUserInputSchema = v.object({
+  user_id: v.pipe(v.string(), v.minLength(4), v.maxLength(20), v.regex(/^[a-zA-Z0-9_]+$/, 'IDは半角英数字とアンダースコアのみ使用できます')),
+  nickname: v.pipe(v.string(), v.minLength(1)),
+  email: v.pipe(v.string(), v.email()),
+  password: v.pipe(v.string(), v.minLength(8)),
 })
-export type CreateUserInput = z.infer<typeof CreateUserInputSchema>
+export type CreateUserInput = v.InferOutput<typeof CreateUserInputSchema>

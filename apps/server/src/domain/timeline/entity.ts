@@ -1,28 +1,28 @@
-import { z } from 'zod'
+import * as v from 'valibot'
 
-export const TimelinePostSchema = z.object({
-  id: z.string(),
-  user_id: z.string(),
-  ike_id: z.string(),
-  ike_category: z.string(),
-  content: z.string(),
-  reply_to_id: z.string().nullable(),
-  created_at: z.string(),
-  updated_at: z.string(),
+export const TimelinePostSchema = v.object({
+  id: v.string(),
+  user_id: v.string(),
+  ike_id: v.string(),
+  ike_category: v.string(),
+  content: v.string(),
+  reply_to_id: v.nullable(v.string()),
+  created_at: v.string(),
+  updated_at: v.string(),
 })
-export type TimelinePost = z.infer<typeof TimelinePostSchema>
+export type TimelinePost = v.InferOutput<typeof TimelinePostSchema>
 
-export const TimelinePostInputSchema = z.object({
-  ike_id: z.string().min(1),
-  ike_category: z.string().min(1),
-  content: z.string().min(1).max(300),
+export const TimelinePostInputSchema = v.object({
+  ike_id: v.pipe(v.string(), v.minLength(1)),
+  ike_category: v.pipe(v.string(), v.minLength(1)),
+  content: v.pipe(v.string(), v.minLength(1), v.maxLength(300)),
 })
-export type TimelinePostInput = z.infer<typeof TimelinePostInputSchema>
+export type TimelinePostInput = v.InferOutput<typeof TimelinePostInputSchema>
 
-export const ReplyPostInputSchema = z.object({
-  content: z.string().min(1).max(300),
+export const ReplyPostInputSchema = v.object({
+  content: v.pipe(v.string(), v.minLength(1), v.maxLength(300)),
 })
-export type ReplyPostInput = z.infer<typeof ReplyPostInputSchema>
+export type ReplyPostInput = v.InferOutput<typeof ReplyPostInputSchema>
 
 // タイムラインのレスポンス形式（いいね数・リプライ・ユーザーのいいね状態付き）
 export type TimelinePostView = TimelinePost & {

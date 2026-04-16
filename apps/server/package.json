@@ -12,7 +12,7 @@
   "dependencies": {
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.9",
-    "zod": "^4.3.6"
+    "valibot": "^1.0.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260329.1",

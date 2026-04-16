@@ -1,26 +1,26 @@
-import { z } from 'zod'
+import * as v from 'valibot'
 
-export const ProfileSchema = z.object({
-  id: z.string(),
-  user_id: z.string(),
-  name: z.string(),
-  bio: z.string().default(''),
-  avatar: z.string().default(''),
-  created_at: z.string(),
-  updated_at: z.string(),
+export const ProfileSchema = v.object({
+  id: v.string(),
+  user_id: v.string(),
+  name: v.string(),
+  bio: v.optional(v.string(), ''),
+  avatar: v.optional(v.string(), ''),
+  created_at: v.string(),
+  updated_at: v.string(),
 })
-export type Profile = z.infer<typeof ProfileSchema>
+export type Profile = v.InferOutput<typeof ProfileSchema>
 
-export const CreateProfileInputSchema = z.object({
-  name: z.string().min(1),
-  bio: z.string().optional().default(''),
-  avatar: z.string().optional().default(''),
+export const CreateProfileInputSchema = v.object({
+  name: v.pipe(v.string(), v.minLength(1)),
+  bio: v.optional(v.string(), ''),
+  avatar: v.optional(v.string(), ''),
 })
-export type CreateProfileInput = z.infer<typeof CreateProfileInputSchema>
+export type CreateProfileInput = v.InferOutput<typeof CreateProfileInputSchema>
 
-export const UpdateProfileInputSchema = z.object({
-  name: z.string().min(1).optional(),
-  bio: z.string().optional(),
-  avatar: z.string().optional(),
+export const UpdateProfileInputSchema = v.object({
+  name: v.optional(v.pipe(v.string(), v.minLength(1))),
+  bio: v.optional(v.string()),
+  avatar: v.optional(v.string()),
 })
-export type UpdateProfileInput = z.infer<typeof UpdateProfileInputSchema>
+export type UpdateProfileInput = v.InferOutput<typeof UpdateProfileInputSchema>

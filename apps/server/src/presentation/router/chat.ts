@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { drizzle } from 'drizzle-orm/d1'
-import { z } from 'zod'
+import * as v from 'valibot'
 import { D1IkeRepository } from '../../infrastructure/repository/d1IkeRepository'
 import { D1MessageRepository } from '../../infrastructure/repository/d1MessageRepository'
 import { PostMessageUseCase } from '../../application/ike/postMessage'
@@ -32,8 +32,8 @@ router.get('/:chat_room_id', async (c) => {
 // メッセージ送信
 router.post('/:chat_room_id/message', async (c) => {
   const body = await c.req.json()
-  const parsed = PostMessageInputSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
+  const parsed = v.safeParse(PostMessageInputSchema, body)
+  if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)
   const ikeRepo = new D1IkeRepository(db)
@@ -43,7 +43,7 @@ router.post('/:chat_room_id/message', async (c) => {
   if (!ike) return c.json({ error: 'NOT_FOUND' }, 404)
 
   try {
-    const message = await new PostMessageUseCase(ikeRepo, messageRepo).execute(ike.id, c.get('userId'), parsed.data)
+    const message = await new PostMessageUseCase(ikeRepo, messageRepo).execute(ike.id, c.get('userId'), parsed.output)
     return c.json(message, 201)
   } catch (e) {
     if (e instanceof Error && e.message === 'NOT_A_MEMBER') return c.json({ error: 'NOT_A_MEMBER' }, 403)
@@ -54,14 +54,14 @@ router.post('/:chat_room_id/message', async (c) => {
 // メッセージ編集
 router.post('/:chat_room_id/:message_id/edit', async (c) => {
   const body = await c.req.json()
-  const parsed = z.object({ content: z.string().min(1) }).safeParse(body)
-  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
+  const parsed = v.safeParse(v.object({ content: v.pipe(v.string(), v.minLength(1)) }), body)
+  if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)
   const messageRepo = new D1MessageRepository(db)
 
   try {
-    const message = await new EditMessageUseCase(messageRepo).execute(c.req.param('message_id'), c.get('userId'), parsed.data.content)
+    const message = await new EditMessageUseCase(messageRepo).execute(c.req.param('message_id'), c.get('userId'), parsed.output.content)
     return c.json(message)
   } catch (e) {
     if (e instanceof Error && e.message === 'MESSAGE_NOT_FOUND') return c.json({ error: 'MESSAGE_NOT_FOUND' }, 404)
@@ -88,8 +88,8 @@ router.post('/:chat_room_id/:message_id/delete', async (c) => {
 // リプライ
 router.post('/:chat_room_id/:message_id/reply', async (c) => {
   const body = await c.req.json()
-  const parsed = PostMessageInputSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
+  const parsed = v.safeParse(PostMessageInputSchema, body)
+  if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)
   const ikeRepo = new D1IkeRepository(db)
@@ -99,7 +99,7 @@ router.post('/:chat_room_id/:message_id/reply', async (c) => {
   if (!ike) return c.json({ error: 'NOT_FOUND' }, 404)
 
   try {
-    const message = await new ReplyMessageUseCase(ikeRepo, messageRepo).execute(ike.id, c.req.param('message_id'), c.get('userId'), parsed.data)
+    const message = await new ReplyMessageUseCase(ikeRepo, messageRepo).execute(ike.id, c.req.param('message_id'), c.get('userId'), parsed.output)
     return c.json(message, 201)
   } catch (e) {
     if (e instanceof Error && e.message === 'NOT_A_MEMBER') return c.json({ error: 'NOT_A_MEMBER' }, 403)

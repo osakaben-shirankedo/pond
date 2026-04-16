@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { drizzle } from 'drizzle-orm/d1'
+import * as v from 'valibot'
 import { D1ProfileRepository } from '../../infrastructure/repository/d1ProfileRepository'
 import { D1UserRepository } from '../../infrastructure/repository/d1UserRepository'
 import { GetProfileUseCase } from '../../application/profile/getProfile'
@@ -30,13 +31,13 @@ router.get('/', async (c) => {
 
 router.post('/edit', async (c) => {
   const body = await c.req.json()
-  const parsed = UpdateProfileInputSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
+  const parsed = v.safeParse(UpdateProfileInputSchema, body)
+  if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)
   const profileRepo = new D1ProfileRepository(db)
   try {
-    const profile = await new EditProfileUseCase(profileRepo).execute(c.get('userId'), parsed.data)
+    const profile = await new EditProfileUseCase(profileRepo).execute(c.get('userId'), parsed.output)
     return c.json(profile)
   } catch (e) {
     if (e instanceof Error && e.message === 'PROFILE_NOT_FOUND') return c.json({ error: 'PROFILE_NOT_FOUND' }, 404)
@@ -58,13 +59,13 @@ router.get('/:user_id', async (c) => {
 
 router.post('/:user_id/edit', async (c) => {
   const body = await c.req.json()
-  const parsed = UpdateProfileInputSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
+  const parsed = v.safeParse(UpdateProfileInputSchema, body)
+  if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)
   const profileRepo = new D1ProfileRepository(db)
   try {
-    const profile = await new EditProfileUseCase(profileRepo).execute(c.req.param('user_id'), parsed.data)
+    const profile = await new EditProfileUseCase(profileRepo).execute(c.req.param('user_id'), parsed.output)
     return c.json(profile)
   } catch (e) {
     if (e instanceof Error && e.message === 'PROFILE_NOT_FOUND') return c.json({ error: 'PROFILE_NOT_FOUND' }, 404)

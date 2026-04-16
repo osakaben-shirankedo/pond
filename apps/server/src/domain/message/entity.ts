@@ -1,20 +1,20 @@
-import { z } from 'zod'
+import * as v from 'valibot'
 import { PublicRangeSchema } from '../user/entity'
 
-export const MessageSchema = z.object({
-  id: z.string(),
-  chat_room_id: z.string(),
-  user_id: z.string(),
-  content: z.string(),
-  reply_to_id: z.string().nullable().optional(),
-  public_range: PublicRangeSchema.default('all'),
-  created_at: z.string(),
-  updated_at: z.string(),
+export const MessageSchema = v.object({
+  id: v.string(),
+  chat_room_id: v.string(),
+  user_id: v.string(),
+  content: v.string(),
+  reply_to_id: v.nullish(v.string()),
+  public_range: v.optional(PublicRangeSchema, 'all'),
+  created_at: v.string(),
+  updated_at: v.string(),
 })
-export type Message = z.infer<typeof MessageSchema>
+export type Message = v.InferOutput<typeof MessageSchema>
 
-export const PostMessageInputSchema = z.object({
-  content: z.string().min(1),
-  public_range: PublicRangeSchema.optional().default('all'),
+export const PostMessageInputSchema = v.object({
+  content: v.pipe(v.string(), v.minLength(1)),
+  public_range: v.optional(PublicRangeSchema, 'all'),
 })
-export type PostMessageInput = z.infer<typeof PostMessageInputSchema>
+export type PostMessageInput = v.InferOutput<typeof PostMessageInputSchema>
