@@ -3,9 +3,8 @@ import { TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { type PondEntry, MAX_CHARS, buildNewPost } from '@/models/new-post';
-import { api } from '@/services/api';
+import { usePostTimelineMutation } from '@/api';
 import { authStorage } from '@/services/auth';
-
 
 export function useNewPost() {
   const [ponds, setPonds] = useState<PondEntry[]>([]);
@@ -13,6 +12,8 @@ export function useNewPost() {
   const [content, setContent] = useState('');
   const [avatarId, setAvatarId] = useState('fishbowl');
   const inputRef = useRef<TextInput>(null);
+
+  const postMutation = usePostTimelineMutation();
 
   useEffect(() => {
     Promise.all([
@@ -43,18 +44,12 @@ export function useNewPost() {
     const token = await authStorage.getToken();
 
     if (token) {
-      // ログイン済み → タイムラインに投稿
-      await api.post(
-        '/timeline/post',
-        {
-          ike_id: selectedPond.pondId,
-          ike_category: selectedPond.field,
-          content: content.trim(),
-        },
-        token,
-      );
+      await postMutation.mutateAsync({
+        ike_id: selectedPond.pondId,
+        ike_category: selectedPond.field,
+        content: content.trim(),
+      });
     } else {
-      // 未ログイン → AsyncStorage に保存（タイムライン表示用）
       const newPost = buildNewPost(content, selectedPond, avatarId);
       const stored = await AsyncStorage.getItem('pond_user_posts');
       const existing = stored ? JSON.parse(stored) : [];

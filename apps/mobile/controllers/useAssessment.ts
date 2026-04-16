@@ -13,15 +13,8 @@ import {
   type FieldId,
 } from '@/models/assessment';
 import { assignPondId } from '@/models/pond-instance';
-import { api } from '@/services/api';
+import { applyIke } from '@/api/endpoints/ike';
 import { authStorage } from '@/services/auth';
-
-type ServerIke = {
-  id: string;
-  ike_name: string;
-  member_ids: string[];
-  chat_room_id: string;
-};
 
 export function useAssessment(field: FieldId | undefined, queue: string | undefined) {
   const resolvedField = field ?? 'default';
@@ -69,11 +62,7 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
     const newMessages = [...messages, userMessage];
 
     if (next < steps.length) {
-      newMessages.push({
-        id: `ai-${next}`,
-        role: 'ai',
-        text: steps[next].question,
-      });
+      newMessages.push({ id: `ai-${next}`, role: 'ai', text: steps[next].question });
       setMessages(newMessages);
       setStepIndex(next);
     } else {
@@ -100,23 +89,14 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
 
     const token = await authStorage.getToken();
     if (token) {
-      // サーバーに申し込み → サーバーが池にアサインして返す
-      const { data, error } = await api.post<ServerIke>('/ike/apply', {
-        field: resolvedFieldId,
-        level: lv,
-        purpose,
-      }, token);
-
-      if (data && !error) {
-        pondId = data.id;
-        console.log('[Assessment] server pond assigned:', pondId);
-      } else {
-        // 利用可能な池がない or エラー → ローカルフォールバック
-        console.log('[Assessment] /ike/apply failed, error:', error, '| fallback to local');
+      try {
+        const ike = await applyIke(resolvedFieldId, lv, purpose, token);
+        pondId = ike.id;
+      } catch {
+        // NO_IKE_AVAILABLE や NETWORK_ERROR 等 → ローカルフォールバック
         pondId = assignPondId(resolvedFieldId, lv);
       }
     } else {
-      // 未ログイン → ローカルアサイン
       pondId = assignPondId(resolvedFieldId, lv);
     }
 
@@ -132,7 +112,6 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
     setAssignedPondId(pondId);
     setPurposeSelected(true);
 
-    // 池に参加したシステムメッセージを保存
     const displayNameStored = await AsyncStorage.getItem('pond_display_name');
     const playerName = displayNameStored || 'あなた';
     const joinMsg = {
@@ -151,27 +130,18 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
     await AsyncStorage.setItem(chatKey, JSON.stringify([...chatMsgs, joinMsg]));
   };
 
-  const handleEnter = () => {
-    setDiving(true);
-  };
+  const handleEnter = () => setDiving(true);
 
   const handleDiveComplete = () => {
     if (nextField) {
       router.replace({
         pathname: '/assessment',
-        params: {
-          field: nextField,
-          queue: remainingQueue.slice(1).join(','),
-        },
+        params: { field: nextField, queue: remainingQueue.slice(1).join(',') },
       });
     } else if (assignedPondId && judgedLevel) {
       router.replace({
         pathname: '/pond-chat',
-        params: {
-          field: field ?? 'programming',
-          level: judgedLevel,
-          pondId: assignedPondId,
-        },
+        params: { field: field ?? 'programming', level: judgedLevel, pondId: assignedPondId },
       });
     } else {
       router.replace('/(tabs)');

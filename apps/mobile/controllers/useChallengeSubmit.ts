@@ -4,18 +4,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   SEED_PARTICIPANTS, SEED_SUBMISSIONS,
   CHALLENGE_PARTICIPATING_KEY, CHALLENGE_SUBMISSION_KEY,
-  type ChallengeParticipant, type MySubmissionResult, type SeedSubmission, type Challenge,
+  type ChallengeParticipant, type MySubmissionResult, type Challenge,
 } from '@/models/challenges';
 import { POND_POINTS_KEY } from '@/models/points';
 import { addNotification } from '@/models/notifications';
-
-// サーバーURLは環境や設定に応じて変更する
-const SERVER_URL = 'http://localhost:8787';
+import { useEvaluateChallengeMutation } from '@/api';
 
 export function useChallengeSubmit(challengeId: string | undefined, challenge: Challenge | undefined) {
   const [answer, setAnswer] = useState('');
-  const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<MySubmissionResult | null>(null);
+  const evaluateMutation = useEvaluateChallengeMutation();
   const [showSubmissions, setShowSubmissions] = useState(false);
   const [participants, setParticipants] = useState<ChallengeParticipant[]>([]);
   const [isParticipating, setIsParticipating] = useState(false);
@@ -57,20 +55,14 @@ export function useChallengeSubmit(challengeId: string | undefined, challenge: C
 
   const handleSubmit = async () => {
     if (!answer.trim() || !challenge || !challengeId) return;
-    setLoading(true);
     try {
-      const res = await fetch(`${SERVER_URL}/challenge/evaluate`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          field: challenge.field,
-          challengeTitle: challenge.title,
-          challengeDescription: challenge.description,
-          answer: answer.trim(),
-          isSubjective: challenge.isSubjective,
-        }),
+      const data = await evaluateMutation.mutateAsync({
+        field: challenge.field,
+        challengeTitle: challenge.title,
+        challengeDescription: challenge.description,
+        answer: answer.trim(),
+        isSubjective: challenge.isSubjective,
       });
-      const data = await res.json() as { pass: boolean; score?: number; comment: string };
       const submissionResult: MySubmissionResult = {
         answer: answer.trim(),
         pass: data.pass,
@@ -100,8 +92,6 @@ export function useChallengeSubmit(challengeId: string | undefined, challenge: C
       Animated.timing(resultAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
     } catch {
       setResult({ answer: answer.trim(), pass: false, comment: 'サーバーに接続できませんでした。再度お試しください。' });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -114,7 +104,7 @@ export function useChallengeSubmit(challengeId: string | undefined, challenge: C
   return {
     answer,
     setAnswer,
-    loading,
+    loading: evaluateMutation.isPending,
     result,
     showSubmissions,
     setShowSubmissions,

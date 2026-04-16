@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
+import { ApiProvider } from '@/api';
 import {
   PlusJakartaSans_400Regular,
   PlusJakartaSans_500Medium,
@@ -69,7 +70,7 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <>
+    <ApiProvider>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="login" />
         <Stack.Screen name="signup" />
@@ -80,6 +81,6 @@ export default function RootLayout() {
         <Stack.Screen name="new-post" options={{ presentation: 'modal' }} />
       </Stack>
       <StatusBar style="dark" backgroundColor="#f7f9ff" />
-    </>
+    </ApiProvider>
   );
 }

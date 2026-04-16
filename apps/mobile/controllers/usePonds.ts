@@ -1,23 +1,12 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useFocusEffect } from 'expo-router';
 import { type PondEntry, LEVEL_ORDER } from '@/models/pond';
 import { FIELD_LABELS } from '@/models/field';
 import { assignPondId } from '@/models/pond-instance';
 import { POND_UNREAD_KEY } from '@/models/notifications';
-import { api } from '@/services/api';
-import { authStorage } from '@/services/auth';
+import { useIkeListQuery, type ServerIke } from '@/api';
 import type { LevelKey } from '@/constants/levels';
-
-type ServerIke = {
-  id: string;
-  ike_name: string;
-  description: string;
-  member_ids: string[];
-  chat_room_id: string;
-  created_at: string;
-  updated_at: string;
-};
 
 function serverIkeToPondEntry(ike: ServerIke): PondEntry {
   return {
@@ -28,8 +17,10 @@ function serverIkeToPondEntry(ike: ServerIke): PondEntry {
 }
 
 export function usePonds() {
-  const [ponds, setPonds] = useState<PondEntry[]>([]);
+  const [localPonds, setLocalPonds] = useState<PondEntry[]>([]);
   const [unreadPondIds, setUnreadPondIds] = useState<string[]>([]);
+
+  const { data: serverIkes } = useIkeListQuery();
 
   useFocusEffect(useCallback(() => {
     (async () => {
@@ -38,41 +29,35 @@ export function usePonds() {
         AsyncStorage.getItem(POND_UNREAD_KEY),
       ]);
 
-      const localRaw: Array<{ field: string; level: string; pondId?: string }> = stored
+      const localRaw: { field: string; level: string; pondId?: string }[] = stored
         ? JSON.parse(stored)
         : [];
-      const localPonds: PondEntry[] = localRaw.map((p) => ({
+      const loaded: PondEntry[] = localRaw.map((p) => ({
         ...p,
         pondId: p.pondId ?? assignPondId(p.field, p.level),
       })) as PondEntry[];
 
+      setLocalPonds(loaded);
       setUnreadPondIds(unreadStored ? JSON.parse(unreadStored) : []);
-
-      const token = await authStorage.getToken();
-      console.log('[Ponds] token exists:', !!token);
-      if (token) {
-        const { data, error } = await api.get<ServerIke[]>('/ike/list', token);
-        console.log('[Ponds] /ike/list result:', data, 'error:', error);
-        if (data && data.length > 0) {
-          const serverPonds = data.map(serverIkeToPondEntry);
-          const localPondIds = new Set(localPonds.map((p) => p.pondId));
-          const mergedServerPonds = serverPonds.filter((p) => !localPondIds.has(p.pondId));
-          setPonds([...localPonds, ...mergedServerPonds]);
-          return;
-        }
-      }
-      setPonds(localPonds);
     })();
   }, []));
 
-  const handleAddPond = () => router.push('/');
+  // ローカル池とサーバー池をマージ（サーバーが優先）
+  const ponds = useMemo(() => {
+    if (serverIkes && serverIkes.length > 0) {
+      const serverPonds = serverIkes.map(serverIkeToPondEntry);
+      const localPondIds = new Set(localPonds.map((p) => p.pondId));
+      const serverOnly = serverPonds.filter((p) => !localPondIds.has(p.pondId));
+      return [...localPonds, ...serverOnly];
+    }
+    return localPonds;
+  }, [localPonds, serverIkes]);
 
+  const handleAddPond = () => router.push('/');
   const handleReassess = (field: string) =>
     router.push({ pathname: '/assessment', params: { field } });
-
   const handleOpenChat = (field: string, level: string, pondId?: string) =>
     router.push({ pathname: '/pond-chat', params: { field, level, pondId: pondId ?? '' } });
-
   const handleExplore = (fieldId: string) =>
     router.push({ pathname: '/assessment', params: { field: fieldId } });
 

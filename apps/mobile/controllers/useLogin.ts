@@ -1,41 +1,48 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
 import { router } from 'expo-router';
-import { api } from '@/services/api';
+import { useMutation } from '@tanstack/react-query';
+import { login } from '@/api/endpoints/auth';
+import { fetchProfile } from '@/api/endpoints/profile';
 import { authStorage } from '@/services/auth';
 
 export function useLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const loginMutation = useMutation({
+    mutationFn: async ({ em, pw }: { em: string; pw: string }) => {
+      const data = await login(em, pw);
+      await authStorage.setToken(data.token);
+      await authStorage.setUserId(data.userId);
+      try {
+        await fetchProfile(data.token);
+        return '/(tabs)' as const;
+      } catch (e) {
+        if (e instanceof Error && e.message === 'PROFILE_NOT_FOUND') return '/login' as const;
+        return '/(tabs)' as const;
+      }
+    },
+    onSuccess: (destination) => {
+      router.replace(destination);
+    },
+    onError: (error) => {
+      Alert.alert(
+        'ログイン失敗',
+        error instanceof Error && error.message === 'INVALID_CREDENTIALS'
+          ? 'メールアドレスまたはパスワードが違います'
+          : 'サーバーに接続できませんでした',
+      );
+    },
+  });
+
+  const handleLogin = () => {
     if (!email || !password) {
       Alert.alert('エラー', 'メールアドレスとパスワードを入力してください');
       return;
     }
-    setLoading(true);
-    const { data, error } = await api.post<{ token: string; userId: string }>('/login', { email, password });
-    if (error || !data) {
-      setLoading(false);
-      Alert.alert(
-        'ログイン失敗',
-        error === 'INVALID_CREDENTIALS' ? 'メールアドレスまたはパスワードが違います' : 'サーバーに接続できませんでした'
-      );
-      return;
-    }
-    await authStorage.setToken(data.token);
-    await authStorage.setUserId(data.userId);
-
-    // プロフィールが存在するか確認してナビゲート
-    const { error: profileError } = await api.get('/profile', data.token);
-    setLoading(false);
-    if (profileError === 'PROFILE_NOT_FOUND') {
-      router.replace('/login');
-    } else {
-      router.replace('/(tabs)');
-    }
+    loginMutation.mutate({ em: email, pw: password });
   };
 
   return {
@@ -45,7 +52,7 @@ export function useLogin() {
     setPassword,
     showPassword,
     setShowPassword,
-    loading,
+    loading: loginMutation.isPending,
     handleLogin,
   };
 }

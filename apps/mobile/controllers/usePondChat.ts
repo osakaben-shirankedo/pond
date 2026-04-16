@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { FlatList } from 'react-native';
 import { type ChatMessage, SEED_MESSAGES } from '@/models/pond-chat';
@@ -8,28 +8,22 @@ import { getPondMembers, getPondInstance, getAvatarIdByName, type PondMember } f
 import { getRankingForPond, type RankedMember, POND_POINTS_KEY } from '@/models/points';
 import { CHALLENGES, PAST_CHALLENGES, CHALLENGE_JOINED_KEY, CHALLENGE_SUBMISSION_KEY, FIELD_ID_MAP, type Challenge } from '@/models/challenges';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api } from '@/services/api';
 import { authStorage } from '@/services/auth';
 import { clearPondUnread } from '@/models/notifications';
+import {
+  useIkeMembersQuery,
+  useIkeChatQuery,
+  useSendMessageMutation,
+  useEditMessageMutation,
+  useReplyToMessageMutation,
+  useDeleteMessageMutation,
+  useLeaveIkeMutation,
+  useAiFishMutation,
+  type MemberProfile,
+  type ServerMessage,
+} from '@/api';
 
 let msgCounter = 100;
-
-// ローカルのシード池IDかどうかで「サーバーの池」か「ローカル池」かを判別する
-// サーバー池はシード池に存在しない任意のID（UUIDや ike-xxx-01 形式など）を持つ
-
-type ServerMessage = {
-  id: string;
-  user_id: string;
-  content: string;
-  reply_to_id: string | null;
-  created_at: string;
-};
-
-type MemberProfile = {
-  user_id: string;
-  name: string;
-  avatar: string;
-};
 
 function serverMsgToChatMsg(
   msg: ServerMessage,
@@ -56,20 +50,26 @@ export function usePondChat(field: string, level: string, pondId: string) {
   const fieldLabel = FIELD_LABELS[field] ?? field;
   const levelKey = level as LevelKey;
   const isServerPond = pondId !== '' && !getPondInstance(pondId);
-  console.log('[PondChat] pondId:', pondId, '| isServerPond:', isServerPond);
 
-  const seedMessages: ChatMessage[] = (SEED_MESSAGES[field] ?? []).map((m, i) => ({
-    ...m,
-    id: String(i),
-    isMe: false,
-    avatarId: getAvatarIdByName(m.user),
-  }));
+  const seedMessages = useMemo(
+    () =>
+      (SEED_MESSAGES[field] ?? []).map((m, i) => ({
+        ...m,
+        id: String(i),
+        isMe: false,
+        avatarId: getAvatarIdByName(m.user),
+      })),
+    [field],
+  );
 
-  const [messages, setMessages] = useState<ChatMessage[]>(isServerPond ? [] : seedMessages);
+  // ローカル池: 表示専用のメッセージリスト（AsyncStorage から読んだチャレンジメッセージ等）
+  const [localChatMsgs, setLocalChatMsgs] = useState<ChatMessage[]>([]);
+  // ローカル池でのみ使う削除済み ID セット
+  const [deletedLocalIds, setDeletedLocalIds] = useState<Set<string>>(new Set());
+
   const [text, setText] = useState('');
   const [myAvatarId, setMyAvatarId] = useState('fishbowl');
   const [myUserId, setMyUserId] = useState('');
-  const [profileMap, setProfileMap] = useState<Map<string, MemberProfile>>(new Map());
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [editingMsg, setEditingMsg] = useState<ChatMessage | null>(null);
   const [myPoints, setMyPoints] = useState(0);
@@ -77,6 +77,24 @@ export function usePondChat(field: string, level: string, pondId: string) {
   const [pastChallenges, setPastChallenges] = useState<Challenge[]>([]);
   const listRef = useRef<FlatList>(null);
 
+  // ─── TanStack Query フック ────────────────────────────────────────────
+  const { data: membersData } = useIkeMembersQuery(pondId, isServerPond);
+  const { data: chatData } = useIkeChatQuery(pondId, isServerPond);
+
+  const sendMutation = useSendMessageMutation(pondId);
+  const editMutation = useEditMessageMutation(pondId);
+  const replyMutation = useReplyToMessageMutation(pondId);
+  const deleteMutation = useDeleteMessageMutation(pondId);
+  const leaveMutation = useLeaveIkeMutation();
+  const aiFishMutation = useAiFishMutation();
+
+  // ─── プロフィールマップ ────────────────────────────────────────────────
+  const profileMap = useMemo(
+    () => new Map((membersData ?? []).map((p) => [p.user_id, p])),
+    [membersData],
+  );
+
+  // ─── AsyncStorage からローカルデータを読み込み ────────────────────────
   const loadStorage = useCallback(() => {
     Promise.all([
       AsyncStorage.getItem('pond_avatar'),
@@ -90,25 +108,19 @@ export function usePondChat(field: string, level: string, pondId: string) {
 
       if (challengeChatStr) {
         const challengeMsgs: ChatMessage[] = JSON.parse(challengeChatStr);
-        setMessages((prev) => {
-          const existingIds = new Set(prev.map((m) => m.id));
-          const newMsgs = challengeMsgs.filter((m) => !existingIds.has(m.id));
-          return newMsgs.length > 0 ? [...prev, ...newMsgs] : prev;
-        });
+        setLocalChatMsgs(challengeMsgs);
       }
 
       const joinedIds: string[] = joinedStr ? JSON.parse(joinedStr) : [];
       const submissionsMap: Record<string, { pass: boolean }> = subStr ? JSON.parse(subStr) : {};
       const fieldKey = Object.entries(FIELD_ID_MAP).find(([, v]) => v === field)?.[0];
 
-      // クリア済みを除いたアクティブチャレンジ
       const matched = CHALLENGES.filter(
         (c) => joinedIds.includes(c.id) && (c.field === fieldKey || c.field === field)
           && submissionsMap[c.id]?.pass !== true
       );
       setActiveChallenges(matched.sort((a, b) => b.daysLeft - a.daysLeft));
 
-      // 過去チャレンジ（PAST_CHALLENGES + クリア済みのアクティブチャレンジ）
       const clearedActive = CHALLENGES.filter(
         (c) => (c.field === fieldKey || c.field === field) && submissionsMap[c.id]?.pass === true
       );
@@ -117,59 +129,74 @@ export function usePondChat(field: string, level: string, pondId: string) {
       );
       const pastIds = new Set(pastFromField.map((c) => c.id));
       const merged = [...clearedActive, ...pastFromField.filter((c) => !pastIds.has(c.id) || true)];
-      // dedupe by id
       const seen = new Set<string>();
       setPastChallenges(merged.filter((c) => { if (seen.has(c.id)) return false; seen.add(c.id); return true; }));
 
-      // 池を開いたので未読フラグをクリア
       if (pondId) clearPondUnread(pondId);
     });
-    authStorage.getUserId().then((id) => {
-      if (id) setMyUserId(id);
-    });
+    authStorage.getUserId().then((id) => { if (id) setMyUserId(id); });
   }, [field, pondId]);
 
-  // 初回ロード
   useEffect(() => { loadStorage(); }, [loadStorage]);
-
-  // 画面フォーカス時に再読み込み（チャレンジ参加後に戻ってきた際に反映）
   useFocusEffect(useCallback(() => { loadStorage(); }, [loadStorage]));
 
-  // サーバー池の場合はメンバープロフィールを取得（初回のみ）
-  useEffect(() => {
-    if (!isServerPond) return;
+  // ─── メッセージリスト（サーバー or ローカル） ─────────────────────────
+  const messages = useMemo(() => {
+    if (isServerPond) {
+      const serverMsgs = (chatData ?? []).map((m) =>
+        serverMsgToChatMsg(m, myUserId, levelKey, profileMap)
+      );
+      const serverIds = new Set(serverMsgs.map((m) => m.id));
+      const localOnly = localChatMsgs.filter((m) => !serverIds.has(m.id));
+      return [...serverMsgs, ...localOnly];
+    }
+    return [...seedMessages, ...localChatMsgs].filter((m) => !deletedLocalIds.has(m.id));
+  }, [isServerPond, chatData, localChatMsgs, deletedLocalIds, myUserId, levelKey, profileMap]);
+  // seedMessages は定数なので deps に入れない
 
-    const fetchProfiles = async () => {
-      const token = await authStorage.getToken();
-      if (!token) return;
-      const { data } = await api.get<MemberProfile[]>(`/ike/${pondId}/members`, token);
-      if (data) {
-        setProfileMap(new Map(data.map((p) => [p.user_id, p])));
+  // ─── メッセージ送信・編集・リプライ ────────────────────────────────────
+  const handleSend = useCallback(async () => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    if (isServerPond) {
+      if (editingMsg) {
+        await editMutation.mutateAsync({ messageId: editingMsg.id, content: trimmed });
+        setEditingMsg(null);
+      } else if (replyingTo) {
+        await replyMutation.mutateAsync({ messageId: replyingTo.id, content: trimmed });
+        setReplyingTo(null);
+      } else {
+        await sendMutation.mutateAsync({ content: trimmed });
       }
-    };
+    } else {
+      const newMsg: ChatMessage = {
+        id: String(msgCounter++),
+        user: 'あなた',
+        avatar: 'あ',
+        level: levelKey,
+        content: trimmed,
+        time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
+        isMe: true,
+        replyToId: replyingTo?.id,
+      };
+      setLocalChatMsgs((prev) => [...prev, newMsg]);
+      setReplyingTo(null);
+    }
 
-    fetchProfiles();
-  }, [isServerPond, pondId]);
+    setText('');
+    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
+  }, [text, levelKey, isServerPond, editingMsg, replyingTo, editMutation, replyMutation, sendMutation]);
 
-  // サーバー池の場合はメッセージを取得（5秒ポーリング）
-  useEffect(() => {
-    if (!isServerPond) return;
+  const handleDelete = useCallback(async (msgId: string) => {
+    if (isServerPond) {
+      await deleteMutation.mutateAsync(msgId);
+    } else {
+      setDeletedLocalIds((prev) => new Set([...prev, msgId]));
+    }
+  }, [isServerPond, deleteMutation]);
 
-    const fetchMessages = async () => {
-      const token = await authStorage.getToken();
-      if (!token) return;
-      const userId = (await authStorage.getUserId()) ?? '';
-      const { data } = await api.get<ServerMessage[]>(`/ike/${pondId}/chat`, token);
-      if (data) {
-        setMessages(data.map((m) => serverMsgToChatMsg(m, userId, levelKey, profileMap)));
-      }
-    };
-
-    fetchMessages();
-    const timer = setInterval(fetchMessages, 5000);
-    return () => clearInterval(timer);
-  }, [isServerPond, pondId, levelKey, profileMap]);
-
+  // ─── メンバー・ランキング ────────────────────────────────────────────
   const members: PondMember[] = isServerPond
     ? Array.from(profileMap.values()).map((p) => ({
         id: p.user_id,
@@ -182,121 +209,52 @@ export function usePondChat(field: string, level: string, pondId: string) {
   const memberCount = members.length;
   const ranking: RankedMember[] = getRankingForPond(pondId, myPoints, myAvatarId);
 
-  // 停滞検出: 自分のメッセージが0件なら停滞とみなす
+  // ─── AI魚 ─────────────────────────────────────────────────────────────
   const userMessageCount = messages.filter((m) => m.isMe && m.type !== 'challenge').length;
   const isStagnant = userMessageCount === 0;
 
-  const [aiFishLoading, setAiFishLoading] = useState(false);
-
   const callAiFish = useCallback(async () => {
-    if (aiFishLoading) return;
-    setAiFishLoading(true);
-    try {
-      const recentMessages = messages
-        .filter((m) => m.type !== 'challenge' && m.type !== 'ai_fish')
-        .slice(-5)
-        .map((m) => `${m.user}: ${m.content}`);
+    if (aiFishMutation.isPending) return;
 
-      const { data } = await api.post<{ message: string }>('/ike/ai-fish', {
-        field: fieldLabel,
-        level: levelKey,
-        recentMessages,
-        memberCount,
-        userMessageCount,
-      });
-      const fishMsg: ChatMessage = {
-        id: `ai-fish-${Date.now()}`,
-        user: 'AI魚',
-        avatar: '🐟',
-        level: levelKey,
-        content: data ? data.message : `${fieldLabel}について、今日気になったことをシェアしてみよう！🐠`,
-        time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
-        isMe: false,
-        type: 'ai_fish',
-      };
-      setMessages((prev) => [...prev, fishMsg]);
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
-    } finally {
-      setAiFishLoading(false);
-    }
-  }, [aiFishLoading, messages, fieldLabel, levelKey, memberCount, userMessageCount]);
+    const recentMessages = messages
+      .filter((m) => m.type !== 'challenge' && m.type !== 'ai_fish')
+      .slice(-5)
+      .map((m) => `${m.user}: ${m.content}`);
 
-  const handleSend = useCallback(async () => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
+    const result = await aiFishMutation.mutateAsync({
+      field: fieldLabel,
+      level: levelKey,
+      recentMessages,
+      memberCount,
+      userMessageCount,
+    });
 
-    if (isServerPond) {
-      const token = await authStorage.getToken();
-      if (!token) return;
-      const userId = (await authStorage.getUserId()) ?? '';
-
-      if (editingMsg) {
-        // 編集モード
-        const { data } = await api.post<ServerMessage>(
-          `/ike/${pondId}/chat/${editingMsg.id}/edit`,
-          { content: trimmed },
-          token,
-        );
-        if (data) {
-          setMessages((prev) =>
-            prev.map((m) => (m.id === editingMsg.id ? serverMsgToChatMsg(data, userId, levelKey, profileMap) : m))
-          );
-        }
-        setEditingMsg(null);
-      } else if (replyingTo) {
-        // リプライモード
-        const { data } = await api.post<ServerMessage>(
-          `/ike/${pondId}/chat/${replyingTo.id}/reply`,
-          { content: trimmed },
-          token,
-        );
-        if (data) {
-          setMessages((prev) => [...prev, serverMsgToChatMsg(data, userId, levelKey, profileMap)]);
-        }
-        setReplyingTo(null);
-      } else {
-        // 通常送信
-        const { data } = await api.post<ServerMessage>(
-          `/ike/${pondId}/chat/message`,
-          { content: trimmed },
-          token,
-        );
-        if (data) {
-          setMessages((prev) => [...prev, serverMsgToChatMsg(data, userId, levelKey, profileMap)]);
-        }
-      }
-    } else {
-      // ローカル池
-      const newMsg: ChatMessage = {
-        id: String(msgCounter++),
-        user: 'あなた',
-        avatar: 'あ',
-        level: levelKey,
-        content: trimmed,
-        time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
-        isMe: true,
-        replyToId: replyingTo?.id,
-      };
-      setMessages((prev) => [...prev, newMsg]);
-      setReplyingTo(null);
-    }
-
-    setText('');
+    const fishMsg: ChatMessage = {
+      id: `ai-fish-${Date.now()}`,
+      user: 'AI魚',
+      avatar: '🐟',
+      level: levelKey,
+      content: result.message,
+      time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
+      isMe: false,
+      type: 'ai_fish',
+    };
+    setLocalChatMsgs((prev) => [...prev, fishMsg]);
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
-  }, [text, levelKey, isServerPond, pondId, editingMsg, replyingTo, profileMap]);
+  }, [aiFishMutation, messages, fieldLabel, levelKey, memberCount, userMessageCount]);
 
-  const handleDelete = useCallback(async (msgId: string) => {
+  // ─── 池を退出 ─────────────────────────────────────────────────────────
+  const leavePond = useCallback(async () => {
     if (isServerPond) {
-      const token = await authStorage.getToken();
-      if (!token) return;
-      const { error } = await api.post(`/ike/${pondId}/chat/${msgId}/delete`, {}, token);
-      if (!error) {
-        setMessages((prev) => prev.filter((m) => m.id !== msgId));
-      }
-    } else {
-      setMessages((prev) => prev.filter((m) => m.id !== msgId));
+      await leaveMutation.mutateAsync(pondId);
     }
-  }, [isServerPond, pondId]);
+    const stored = await AsyncStorage.getItem('pond_ponds');
+    const ponds: { field: string; pondId?: string }[] = stored ? JSON.parse(stored) : [];
+    await AsyncStorage.setItem(
+      'pond_ponds',
+      JSON.stringify(ponds.filter((p) => !(p.pondId === pondId || p.field === field)))
+    );
+  }, [isServerPond, pondId, field, leaveMutation]);
 
   const startEdit = useCallback((msg: ChatMessage) => {
     setEditingMsg(msg);
@@ -314,21 +272,6 @@ export function usePondChat(field: string, level: string, pondId: string) {
     setReplyingTo(null);
     setText('');
   }, []);
-
-  const leavePond = useCallback(async () => {
-    if (isServerPond) {
-      const token = await authStorage.getToken();
-      if (token) {
-        await api.post(`/ike/${pondId}/leave`, {}, token);
-      }
-    }
-    const stored = await AsyncStorage.getItem('pond_ponds');
-    const ponds: Array<{ field: string; pondId?: string }> = stored ? JSON.parse(stored) : [];
-    await AsyncStorage.setItem(
-      'pond_ponds',
-      JSON.stringify(ponds.filter((p) => !(p.pondId === pondId || p.field === field)))
-    );
-  }, [isServerPond, pondId, field]);
 
   return {
     fieldLabel,
@@ -353,7 +296,7 @@ export function usePondChat(field: string, level: string, pondId: string) {
     pastChallenges,
     isStagnant,
     callAiFish,
-    aiFishLoading,
+    aiFishLoading: aiFishMutation.isPending,
     leavePond,
   };
 }

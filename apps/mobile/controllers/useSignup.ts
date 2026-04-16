@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
 import { router } from 'expo-router';
-import { api } from '@/services/api';
+import { useMutation } from '@tanstack/react-query';
+import { register, login as loginFn, registerProfile } from '@/api/endpoints/auth';
 import { authStorage } from '@/services/auth';
 
 export function useSignup() {
@@ -12,15 +13,47 @@ export function useSignup() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  const handleSignup = async () => {
+  const signupMutation = useMutation({
+    mutationFn: async (params: {
+      userId: string; name: string; email: string; password: string;
+    }) => {
+      // 1. アカウント登録
+      await register({
+        user_id: params.userId,
+        email: params.email,
+        password: params.password,
+        nickname: params.name,
+      });
+      // 2. ログインしてトークン取得
+      const loginData = await loginFn(params.email, params.password);
+      await authStorage.setToken(loginData.token);
+      await authStorage.setUserId(loginData.userId);
+      // 3. プロフィール作成
+      await registerProfile({ name: params.name }, loginData.token);
+    },
+    onSuccess: () => {
+      router.replace('/onboarding');
+    },
+    onError: (error) => {
+      const msg = error instanceof Error ? error.message : '';
+      Alert.alert(
+        '登録失敗',
+        msg === 'EMAIL_ALREADY_EXISTS'
+          ? 'このメールアドレスは既に使われています'
+          : msg === 'USER_ID_ALREADY_EXISTS'
+            ? 'このユーザーIDは既に使われています'
+            : '入力内容を確認するか、しばらく経ってからやり直してください',
+      );
+    },
+  });
+
+  const handleSignup = () => {
     if (!userId || !name || !email || !password || !confirmPassword) {
       Alert.alert('エラー', 'すべての項目を入力してください');
       return;
     }
-    const idRegex = /^[a-zA-Z0-9_]+$/;
-    if (!idRegex.test(userId)) {
+    if (!/^[a-zA-Z0-9_]+$/.test(userId)) {
       Alert.alert('エラー', 'ユーザーIDは半角英数字とアンダースコアのみ使用できます');
       return;
     }
@@ -36,66 +69,18 @@ export function useSignup() {
       Alert.alert('エラー', 'パスワードは8文字以上にしてください');
       return;
     }
-
-    setLoading(true);
-
-    // 1. アカウント登録
-    const { error: registerError } = await api.post('/register', {
-      user_id: userId,
-      email,
-      password,
-      nickname: name,
-    });
-    if (registerError) {
-      setLoading(false);
-      Alert.alert(
-        '登録失敗',
-        registerError === 'EMAIL_ALREADY_EXISTS'
-          ? 'このメールアドレスは既に使われています'
-          : registerError === 'USER_ID_ALREADY_EXISTS'
-            ? 'このユーザーIDは既に使われています'
-            : '入力内容を確認するか、しばらく経ってからやり直してください'
-      );
-      return;
-    }
-
-    // 2. ログインしてトークン取得
-    const { data: loginData, error: loginError } = await api.post<{ token: string; userId: string }>('/login', {
-      email,
-      password,
-    });
-    if (loginError || !loginData) {
-      setLoading(false);
-      Alert.alert('エラー', 'ログインに失敗しました。再度ログインしてください');
-      router.replace('/login');
-      return;
-    }
-    await authStorage.setToken(loginData.token);
-    await authStorage.setUserId(loginData.userId);
-
-    // 3. プロフィール作成（名前だけ）
-    await api.post('/register/profile', { name }, loginData.token);
-
-    setLoading(false);
-    router.replace('/onboarding');
+    signupMutation.mutate({ userId, name, email, password });
   };
 
   return {
-    name,
-    setName,
-    email,
-    setEmail,
-    password,
-    setPassword,
-    confirmPassword,
-    setConfirmPassword,
-    showPassword,
-    setShowPassword,
-    showConfirmPassword,
-    setShowConfirmPassword,
-    loading,
+    name, setName,
+    email, setEmail,
+    password, setPassword,
+    confirmPassword, setConfirmPassword,
+    showPassword, setShowPassword,
+    showConfirmPassword, setShowConfirmPassword,
+    loading: signupMutation.isPending,
     handleSignup,
-    userId,
-    setUserId,
+    userId, setUserId,
   };
 }
