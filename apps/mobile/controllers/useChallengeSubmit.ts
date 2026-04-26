@@ -1,56 +1,46 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Animated } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   SEED_PARTICIPANTS, SEED_SUBMISSIONS,
-  CHALLENGE_PARTICIPATING_KEY, CHALLENGE_SUBMISSION_KEY,
-  type ChallengeParticipant, type MySubmissionResult, type Challenge,
+  type Challenge,
 } from '@/models/challenges';
-import { POND_POINTS_KEY } from '@/models/points';
-import { addNotification } from '@/models/notifications';
 import { useEvaluateChallengeMutation } from '@/api';
+import { useChallengeSubmitStore, useChallengesStore, useUserStore, useNotificationsStore } from '@/stores';
 
 export function useChallengeSubmit(challengeId: string | undefined, challenge: Challenge | undefined) {
-  const [answer, setAnswer] = useState('');
-  const [result, setResult] = useState<MySubmissionResult | null>(null);
+  const {
+    answer, result, showSubmissions, participants, isParticipating,
+    setAnswer, setResult, setShowSubmissions, setParticipants, setIsParticipating,
+    reset,
+  } = useChallengeSubmitStore();
+
   const evaluateMutation = useEvaluateChallengeMutation();
-  const [showSubmissions, setShowSubmissions] = useState(false);
-  const [participants, setParticipants] = useState<ChallengeParticipant[]>([]);
-  const [isParticipating, setIsParticipating] = useState(false);
-  const [myAvatarId, setMyAvatarId] = useState('fishbowl');
   const resultAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!challengeId) return;
-    Promise.all([
-      AsyncStorage.getItem(CHALLENGE_PARTICIPATING_KEY),
-      AsyncStorage.getItem(CHALLENGE_SUBMISSION_KEY),
-      AsyncStorage.getItem('pond_avatar'),
-    ]).then(([partStr, subStr, avatarStr]) => {
-      const participatingIds: string[] = partStr ? JSON.parse(partStr) : [];
-      setIsParticipating(participatingIds.includes(challengeId));
-      if (subStr) {
-        const map: Record<string, MySubmissionResult> = JSON.parse(subStr);
-        if (map[challengeId]) setResult(map[challengeId]);
-      }
-      if (avatarStr) setMyAvatarId(avatarStr);
-    });
+    reset();
+    resultAnim.setValue(0);
 
-    const seeds = SEED_PARTICIPANTS[challengeId] ?? [];
-    setParticipants(seeds);
+    const { participatingIds, submissionsMap } = useChallengesStore.getState();
+    setIsParticipating(participatingIds.includes(challengeId));
+    const sub = submissionsMap[challengeId];
+    if (sub) setResult(sub);
+
+    setParticipants(SEED_PARTICIPANTS[challengeId] ?? []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [challengeId]);
 
   const toggleParticipate = async () => {
     if (!challengeId) return;
-    const partStr = await AsyncStorage.getItem(CHALLENGE_PARTICIPATING_KEY);
-    const ids: string[] = partStr ? JSON.parse(partStr) : [];
-    const next = isParticipating ? ids.filter((i) => i !== challengeId) : [...ids, challengeId];
-    setIsParticipating(!isParticipating);
-    await AsyncStorage.setItem(CHALLENGE_PARTICIPATING_KEY, JSON.stringify(next));
-
-    // メンバーリスト更新
-    const seeds = SEED_PARTICIPANTS[challengeId] ?? [];
-    setParticipants(seeds);
+    const next = !isParticipating;
+    setIsParticipating(next);
+    if (next) {
+      useChallengesStore.getState().addParticipatingId(challengeId);
+    } else {
+      useChallengesStore.getState().removeParticipatingId(challengeId);
+    }
+    setParticipants(SEED_PARTICIPANTS[challengeId] ?? []);
   };
 
   const handleSubmit = async () => {
@@ -63,28 +53,22 @@ export function useChallengeSubmit(challengeId: string | undefined, challenge: C
         answer: answer.trim(),
         isSubjective: challenge.isSubjective,
       });
-      const submissionResult: MySubmissionResult = {
+      const submissionResult = {
         answer: answer.trim(),
         pass: data.pass,
         score: data.score,
         comment: data.comment,
       };
       setResult(submissionResult);
+      useChallengesStore.getState().addSubmission(challengeId, submissionResult);
 
-      // 保存
-      const subStr = await AsyncStorage.getItem(CHALLENGE_SUBMISSION_KEY);
-      const map: Record<string, MySubmissionResult> = subStr ? JSON.parse(subStr) : {};
-      map[challengeId] = submissionResult;
-      await AsyncStorage.setItem(CHALLENGE_SUBMISSION_KEY, JSON.stringify(map));
-
-      // 合格ならポイント+1 & 通知
       if (data.pass) {
-        const pts = parseInt((await AsyncStorage.getItem(POND_POINTS_KEY)) ?? '0', 10);
-        await AsyncStorage.setItem(POND_POINTS_KEY, String(pts + 1));
-        await addNotification({
+        useChallengesStore.getState().addPoints(1);
+        const avatarId = useUserStore.getState().avatarId;
+        useNotificationsStore.getState().addNotification({
           type: 'challenge_pass',
           fromUser: 'あなた',
-          fromAvatarId: myAvatarId,
+          fromAvatarId: avatarId,
           text: `「${challenge?.title}」のチャレンジに成功しました！ +1ポイント`,
         });
       }
@@ -101,6 +85,8 @@ export function useChallengeSubmit(challengeId: string | undefined, challenge: C
     resultAnim.setValue(0);
   };
 
+  const avatarId = useUserStore((s) => s.avatarId);
+
   return {
     answer,
     setAnswer,
@@ -110,7 +96,7 @@ export function useChallengeSubmit(challengeId: string | undefined, challenge: C
     setShowSubmissions,
     participants,
     isParticipating,
-    myAvatarId,
+    myAvatarId: avatarId,
     resultAnim,
     toggleParticipate,
     handleSubmit,

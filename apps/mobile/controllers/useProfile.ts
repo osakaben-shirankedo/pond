@@ -1,43 +1,29 @@
-import { useState, useCallback } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router, useFocusEffect } from 'expo-router';
-import { type PondEntry } from '@/models/pond';
-import { buildStats, SETTINGS_ITEMS, DEFAULT_AVATAR_ID } from '@/models/profile';
-import { POND_POINTS_KEY } from '@/models/points';
+import { useEffect } from 'react';
+import { router } from 'expo-router';
+import { buildStats, SETTINGS_ITEMS } from '@/models/profile';
 import { useProfileQuery, useEditProfileMutation, queryClient } from '@/api';
 import { logout } from '@/api/endpoints/auth';
 import { authStorage } from '@/services/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useUserStore, useProfileStore, useChallengesStore, useNotificationsStore } from '@/stores';
 
 export function useProfile() {
-  const [ponds, setPonds] = useState<PondEntry[]>([]);
-  const [avatarId, setAvatarId] = useState(DEFAULT_AVATAR_ID);
-  const [pickerVisible, setPickerVisible] = useState(false);
-  const [myPoints, setMyPoints] = useState(0);
+  const { ponds, avatarId, setAvatarId } = useUserStore();
+  const { points } = useChallengesStore();
+  const { pickerVisible, openPicker, closePicker } = useProfileStore();
 
   const { data: profile } = useProfileQuery();
   const editProfileMutation = useEditProfileMutation();
 
-  useFocusEffect(useCallback(() => {
-    Promise.all([
-      AsyncStorage.getItem('pond_ponds'),
-      AsyncStorage.getItem('pond_avatar'),
-      AsyncStorage.getItem(POND_POINTS_KEY),
-    ]).then(([pondStored, avatarStored, pointsStored]) => {
-      if (pondStored) setPonds(JSON.parse(pondStored));
-      if (pointsStored) setMyPoints(parseInt(pointsStored, 10));
-      // サーバーのアバターが優先されるが、ロード前のフォールバックとしてローカルを使用
-      if (avatarStored && !profile?.avatar) setAvatarId(avatarStored);
-    });
-  }, [profile?.avatar]));
-
-  // サーバープロフィールが取得できたらアバターを同期
-  if (profile?.avatar && profile.avatar !== '' && avatarId !== profile.avatar) {
-    setAvatarId(profile.avatar);
-  }
+  // サーバープロフィールのアバターをストアに同期
+  useEffect(() => {
+    if (profile?.avatar && profile.avatar !== '' && avatarId !== profile.avatar) {
+      setAvatarId(profile.avatar);
+    }
+  }, [profile?.avatar, avatarId, setAvatarId]);
 
   const selectAvatar = async (id: string) => {
     setAvatarId(id);
-    await AsyncStorage.setItem('pond_avatar', id);
     await editProfileMutation.mutateAsync({ avatar: id });
   };
 
@@ -49,6 +35,9 @@ export function useProfile() {
     queryClient.clear();
     await authStorage.clear();
     await AsyncStorage.clear();
+    useUserStore.getState().reset();
+    useNotificationsStore.setState({ notifications: [] });
+    useChallengesStore.getState().reset();
     router.replace('/login');
   };
 
@@ -59,11 +48,11 @@ export function useProfile() {
     avatarId,
     pickerVisible,
     profile: profile ?? null,
-    myPoints,
-    openPicker: () => setPickerVisible(true),
-    closePicker: () => setPickerVisible(false),
+    myPoints: points,
+    openPicker,
+    closePicker,
     selectAvatar,
-    STATS: buildStats(myPoints),
+    STATS: buildStats(points),
     SETTINGS_ITEMS,
     handleLogout,
     handleJoinPond,

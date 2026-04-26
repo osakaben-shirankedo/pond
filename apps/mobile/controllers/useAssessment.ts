@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { Animated, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -8,13 +8,12 @@ import {
   getLevelDescription,
   buildInitialMessage,
   FIELD_LABELS,
-  type Message,
-  type LevelKey,
   type FieldId,
 } from '@/models/assessment';
 import { assignPondId } from '@/models/pond-instance';
 import { applyIke } from '@/api/endpoints/ike';
 import { authStorage } from '@/services/auth';
+import { useAssessmentStore, useUserStore } from '@/stores';
 
 export function useAssessment(field: FieldId | undefined, queue: string | undefined) {
   const resolvedField = field ?? 'default';
@@ -22,20 +21,22 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
   const remainingQueue = queue ? queue.split(',').filter(Boolean) : [];
   const nextField = remainingQueue[0] as FieldId | undefined;
 
-  const [messages, setMessages] = useState<Message[]>([
-    buildInitialMessage(resolvedField, steps[0].question),
-  ]);
-  const [stepIndex, setStepIndex] = useState(0);
-  const [answers, setAnswers] = useState<number[]>([]);
-  const [done, setDone] = useState(false);
-  const [level, setLevel] = useState<LevelKey | null>(null);
-  const [judgedLevel, setJudgedLevel] = useState<LevelKey | null>(null);
-  const [purposeSelected, setPurposeSelected] = useState(false);
-  const [diving, setDiving] = useState(false);
-  const [assignedPondId, setAssignedPondId] = useState<string | null>(null);
+  const {
+    messages, stepIndex, answers, done, level, judgedLevel,
+    purposeSelected, diving, assignedPondId,
+    setMessages, setStepIndex, setAnswers, setDone, setLevel,
+    setJudgedLevel, setPurposeSelected, setDiving, setAssignedPondId,
+    reset,
+  } = useAssessmentStore();
 
   const scrollRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    reset(buildInitialMessage(resolvedField, steps[0].question));
+    fadeAnim.setValue(0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedField]);
 
   useEffect(() => {
     if (done && level) {
@@ -45,13 +46,13 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
         useNativeDriver: true,
       }).start();
     }
-  }, [done, level]);
+  }, [done, level, fadeAnim]);
 
   const handleOption = async (optionIndex: number) => {
     const currentStep = steps[stepIndex];
-    const userMessage: Message = {
+    const userMessage = {
       id: `u-${stepIndex}`,
-      role: 'user',
+      role: 'user' as const,
       text: currentStep.options[optionIndex],
     };
 
@@ -93,22 +94,15 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
         const ike = await applyIke(resolvedFieldId, lv, purpose, token);
         pondId = ike.id;
       } catch {
-        // NO_IKE_AVAILABLE や NETWORK_ERROR 等 → ローカルフォールバック
         pondId = assignPondId(resolvedFieldId, lv);
       }
     } else {
       pondId = assignPondId(resolvedFieldId, lv);
     }
 
-    const existingStored = await AsyncStorage.getItem('pond_ponds');
-    const existing: { field: string; level: LevelKey; pondId: string }[] = existingStored
-      ? JSON.parse(existingStored)
-      : [];
-    const merged = existing.filter((p) => p.field !== field);
-    merged.push({ field: resolvedFieldId, level: lv, pondId });
-    await AsyncStorage.setItem('pond_ponds', JSON.stringify(merged));
-    await AsyncStorage.setItem('pond_onboarding_done', 'true');
+    useUserStore.getState().addPond({ field: resolvedFieldId, level: lv, pondId });
 
+    await AsyncStorage.setItem('pond_onboarding_done', 'true');
     setAssignedPondId(pondId);
     setPurposeSelected(true);
 
@@ -122,7 +116,7 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
       content: `${playerName}が参加しました。`,
       time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
       isMe: false,
-      type: 'system',
+      type: 'system' as const,
     };
     const chatKey = `challenge_chat_${pondId}`;
     const existing2 = await AsyncStorage.getItem(chatKey);

@@ -1,5 +1,5 @@
 import * as v from 'valibot'
-import { api } from '@/services/api'
+import { client, authHeader, toResult } from '@/services/api'
 import {
   LoginResponseSchema,
   RegisterResponseSchema,
@@ -19,7 +19,7 @@ function parseOrThrow<T>(schema: v.GenericSchema<unknown, T>, data: unknown, lab
 }
 
 export async function login(email: string, password: string): Promise<LoginResponse> {
-  const { data, error } = await api.post('/login', { email, password })
+  const { data, error } = await toResult(client.login.$post({ json: { email, password } }))
   if (error) throw new Error(error)
   return parseOrThrow(LoginResponseSchema, data, 'login')
 }
@@ -30,7 +30,7 @@ export async function register(body: {
   email: string
   password: string
 }): Promise<RegisterResponse> {
-  const { data, error } = await api.post('/register', body)
+  const { data, error } = await toResult(client.register.$post({ json: body }))
   if (error) throw new Error(error)
   return parseOrThrow(RegisterResponseSchema, data, 'register')
 }
@@ -39,11 +39,13 @@ export async function registerProfile(
   body: { name: string; bio?: string; avatar?: string },
   token: string,
 ): Promise<ServerProfile> {
-  const { data, error } = await api.post('/register/profile', body, token)
+  const { data, error } = await toResult(
+    client.register.profile.$post({ json: body }, authHeader(token)),
+  )
   if (error) throw new Error(error)
   return parseOrThrow(ServerProfileSchema, data, 'registerProfile')
 }
 
 export async function logout(token: string): Promise<void> {
-  await api.post('/logout', {}, token)
+  await toResult(client.logout.$post({}, authHeader(token)))
 }

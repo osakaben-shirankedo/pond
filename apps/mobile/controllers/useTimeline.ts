@@ -1,13 +1,11 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { type Post, type Comment, SEED_POSTS } from '@/models/timeline';
-import { addNotification } from '@/models/notifications';
 import { type PondEntry } from '@/models/new-post';
 import { FIELD_LABELS } from '@/models/field';
-import { assignPondId } from '@/models/pond-instance';
 import { authStorage } from '@/services/auth';
 import {
   useTimelineQuery,
@@ -17,8 +15,8 @@ import {
   queryKeys,
   type TimelinePostView,
 } from '@/api';
+import { useTimelineStore, useUserStore, useNotificationsStore } from '@/stores';
 
-// ─── サーバー型 → UI型の変換 ────────────────────────────────────────────
 function serverPostToPost(sp: TimelinePostView, myUserId: string, myAvatarId: string): Post {
   const isMe = sp.user_id === myUserId;
   return {
@@ -49,64 +47,38 @@ function serverPostToPost(sp: TimelinePostView, myUserId: string, myAvatarId: st
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-
 export function useTimeline() {
-  const [myPonds, setMyPonds] = useState<PondEntry[]>([]);
-  const [myAvatarId, setMyAvatarId] = useState('fishbowl');
-  const [myUserId, setMyUserId] = useState('');
-  const [localPosts, setLocalPosts] = useState<Post[]>([]);
-  const [activeFilter, setActiveFilter] = useState<string>('all');
-  const [commentPostId, setCommentPostId] = useState<string | null>(null);
-  const [menuPostId, setMenuPostId] = useState<string | null>(null);
-  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const { ponds: myPonds, avatarId: myAvatarId, userId: myUserId } = useUserStore();
+  const {
+    localPosts, activeFilter, commentPostId, menuPostId, editingPost,
+    setLocalPosts, setActiveFilter, setCommentPostId, setMenuPostId, setEditingPost,
+  } = useTimelineStore();
 
   const qc = useQueryClient();
 
-  // ユーザー設定・ローカルデータの読み込み（画面フォーカス時）
+  // フォーカス時: ローカル投稿を AsyncStorage から同期しタイムラインを再取得
   useFocusEffect(useCallback(() => {
-    Promise.all([
-      AsyncStorage.getItem('pond_user_posts'),
-      AsyncStorage.getItem('pond_ponds'),
-      AsyncStorage.getItem('pond_avatar'),
-      authStorage.getUserId(),
-    ]).then(([userPostsStored, pondsStored, avatarStored, userId]) => {
-      if (avatarStored) setMyAvatarId(avatarStored);
-      if (userId) setMyUserId(userId);
-
-      const rawPonds: Array<{ field: string; level: string; pondId?: string }> =
-        pondsStored ? JSON.parse(pondsStored) : [];
-      const ponds: PondEntry[] = rawPonds.map((p) => ({
-        ...p,
-        pondId: p.pondId ?? assignPondId(p.field, p.level),
-      })) as PondEntry[];
-      setMyPonds(ponds);
-
+    AsyncStorage.getItem('pond_user_posts').then((userPostsStored) => {
       const rawUserPosts: Post[] = userPostsStored ? JSON.parse(userPostsStored) : [];
       setLocalPosts(
         rawUserPosts.map((p) => ({
           ...p,
-          avatarId: p.avatarId || (avatarStored ?? 'fishbowl'),
+          avatarId: p.avatarId || myAvatarId,
           comments: p.comments ?? [],
         }))
       );
-
-      // フォーカス時にタイムラインを再取得
       qc.invalidateQueries({ queryKey: queryKeys.timeline.all() });
     });
-  }, [])); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [myAvatarId, setLocalPosts, qc]));
 
-  // サーバーからのタイムライン（TanStack Query が自動キャッシュ＆再取得）
-  const categories = useMemo(() => myPonds.map((p) => p.field).join(','), [myPonds]);
+  const categories = useMemo(() => myPonds.map((p: PondEntry) => p.field).join(','), [myPonds]);
   const { data: serverData } = useTimelineQuery(categories);
 
-  // サーバー投稿 → UI型に変換
   const serverPosts = useMemo(
     () => (serverData ?? []).map((sp) => serverPostToPost(sp, myUserId, myAvatarId)),
     [serverData, myUserId, myAvatarId],
   );
 
-  // サーバー投稿を優先し、ローカルのみの投稿を末尾に追加
   const posts = useMemo(() => {
     if (serverPosts.length === 0) {
       return localPosts.length > 0 ? [...localPosts, ...SEED_POSTS] : SEED_POSTS;
@@ -116,19 +88,17 @@ export function useTimeline() {
     return [...serverPosts, ...localOnly];
   }, [serverPosts, localPosts]);
 
-  // ─── ミューテーション ──────────────────────────────────────────────────
   const likeMutation = useLikePostMutation();
   const unlikeMutation = useUnlikePostMutation();
   const replyMutation = useReplyToPostMutation();
 
-  // ─── フィルター ────────────────────────────────────────────────────────
-  const myFields = myPonds.map((p) => p.field);
-  const myPondIds = new Set(myPonds.map((p) => p.pondId).filter(Boolean));
+  const myFields = myPonds.map((p: PondEntry) => p.field);
+  const myPondIds = new Set(myPonds.map((p: PondEntry) => p.pondId).filter(Boolean));
 
   const filters = [
     { id: 'all', label: 'すべて' },
     ...(myPonds.length > 0 ? [{ id: 'my_ponds', label: 'マイ池' }] : []),
-    ...myPonds.map((p) => ({ id: p.field, label: FIELD_LABELS[p.field] ?? p.field })),
+    ...myPonds.map((p: PondEntry) => ({ id: p.field, label: FIELD_LABELS[p.field] ?? p.field })),
   ];
 
   const filtered = useMemo(() => {
@@ -145,14 +115,10 @@ export function useTimeline() {
     return posts.filter((p) => p.field === activeFilter);
   }, [posts, activeFilter, myFields, myPondIds]);
 
-  // ─── アクション ────────────────────────────────────────────────────────
-
-  /** いいね切り替え（楽観的更新 → mutation） */
   const toggleLike = useCallback(async (id: string) => {
     const post = posts.find((p) => p.id === id);
     if (!post) return;
 
-    // 楽観的更新: クエリキャッシュを直接書き換える
     qc.setQueryData<TimelinePostView[]>(
       queryKeys.timeline.list(categories),
       (prev) =>
@@ -173,7 +139,6 @@ export function useTimeline() {
     const mutation = post.liked ? unlikeMutation : likeMutation;
     mutation.mutate(id, {
       onError: () => {
-        // エラー時はキャッシュを戻す
         qc.invalidateQueries({ queryKey: queryKeys.timeline.list(categories) });
       },
     });
@@ -182,8 +147,8 @@ export function useTimeline() {
   const openComments = useCallback((postId: string) => {
     setMenuPostId(null);
     setCommentPostId(postId);
-  }, []);
-  const closeComments = useCallback(() => setCommentPostId(null), []);
+  }, [setMenuPostId, setCommentPostId]);
+  const closeComments = useCallback(() => setCommentPostId(null), [setCommentPostId]);
 
   const addComment = useCallback(async (postId: string, content: string) => {
     const token = await authStorage.getToken();
@@ -223,7 +188,6 @@ export function useTimeline() {
       return;
     }
 
-    // ローカルフォールバック
     const newComment: Comment = {
       id: `comment-${Date.now()}`,
       postId,
@@ -237,17 +201,17 @@ export function useTimeline() {
     );
     const targetPost = posts.find((p) => p.id === postId);
     if (targetPost && targetPost.user !== 'あなた') {
-      await addNotification({
+      useNotificationsStore.getState().addNotification({
         type: 'comment',
         fromUser: 'あなた',
         fromAvatarId: myAvatarId,
         text: `${targetPost.user}の投稿にコメントしました`,
       });
     }
-  }, [serverPosts, replyMutation, qc, categories, myUserId, myAvatarId, posts]);
+  }, [serverPosts, replyMutation, qc, categories, myUserId, myAvatarId, posts, setLocalPosts]);
 
-  const openMenu = useCallback((postId: string) => setMenuPostId(postId), []);
-  const closeMenu = useCallback(() => setMenuPostId(null), []);
+  const openMenu = useCallback((postId: string) => setMenuPostId(postId), [setMenuPostId]);
+  const closeMenu = useCallback(() => setMenuPostId(null), [setMenuPostId]);
 
   const deletePost = useCallback(async (postId: string) => {
     setMenuPostId(null);
@@ -258,12 +222,12 @@ export function useTimeline() {
       'pond_user_posts',
       JSON.stringify(existing.filter((p) => p.id !== postId))
     );
-  }, []);
+  }, [setMenuPostId, setLocalPosts]);
 
   const startEdit = useCallback((post: Post) => {
     setMenuPostId(null);
     setEditingPost(post);
-  }, []);
+  }, [setMenuPostId, setEditingPost]);
 
   const saveEdit = useCallback(async (postId: string, newContent: string) => {
     setEditingPost(null);
@@ -276,9 +240,9 @@ export function useTimeline() {
       'pond_user_posts',
       JSON.stringify(existing.map((p) => (p.id === postId ? { ...p, content: newContent } : p)))
     );
-  }, []);
+  }, [setEditingPost, setLocalPosts]);
 
-  const cancelEdit = useCallback(() => setEditingPost(null), []);
+  const cancelEdit = useCallback(() => setEditingPost(null), [setEditingPost]);
 
   const selectedPost = posts.find((p) => p.id === commentPostId) ?? null;
 

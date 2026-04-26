@@ -1,5 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
 export const NOTIFICATIONS_KEY = 'pond_notifications';
 export const POND_UNREAD_KEY = 'pond_unread_ponds';
 
@@ -44,31 +42,3 @@ export const SEED_NOTIFICATIONS: Notification[] = [
     read: true,
   },
 ];
-
-export async function addNotification(
-  notif: Omit<Notification, 'id' | 'time' | 'read'>
-): Promise<void> {
-  const stored = await AsyncStorage.getItem(NOTIFICATIONS_KEY);
-  const existing: Notification[] = stored ? JSON.parse(stored) : SEED_NOTIFICATIONS;
-  const newNotif: Notification = {
-    ...notif,
-    id: `notif-${Date.now()}`,
-    time: 'たった今',
-    read: false,
-  };
-  await AsyncStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify([newNotif, ...existing]));
-}
-
-export async function markPondUnread(pondId: string): Promise<void> {
-  const stored = await AsyncStorage.getItem(POND_UNREAD_KEY);
-  const ids: string[] = stored ? JSON.parse(stored) : [];
-  if (!ids.includes(pondId)) {
-    await AsyncStorage.setItem(POND_UNREAD_KEY, JSON.stringify([...ids, pondId]));
-  }
-}
-
-export async function clearPondUnread(pondId: string): Promise<void> {
-  const stored = await AsyncStorage.getItem(POND_UNREAD_KEY);
-  const ids: string[] = stored ? JSON.parse(stored) : [];
-  await AsyncStorage.setItem(POND_UNREAD_KEY, JSON.stringify(ids.filter((id) => id !== pondId)));
-}

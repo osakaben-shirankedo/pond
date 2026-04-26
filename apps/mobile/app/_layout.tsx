@@ -19,6 +19,7 @@ import { useEffect } from 'react';
 import { router } from 'expo-router';
 import { authStorage } from '@/services/auth';
 import { api } from '@/services/api';
+import { useUserStore } from '@/stores';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -47,6 +48,12 @@ export default function RootLayout() {
         SplashScreen.hideAsync();
         router.replace('/login');
         return;
+      }
+
+      // userStore に userId が未セットの場合、authStorage から補完する
+      if (!useUserStore.getState().userId) {
+        const userId = await authStorage.getUserId();
+        if (userId) useUserStore.getState().setUserId(userId);
       }
 
       const { error } = await api.get('/profile', token);

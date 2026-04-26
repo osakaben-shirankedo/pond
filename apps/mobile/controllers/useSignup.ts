@@ -1,38 +1,37 @@
-import { useState } from 'react';
 import { Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 import { register, login as loginFn, registerProfile } from '@/api/endpoints/auth';
 import { authStorage } from '@/services/auth';
+import { useSignupStore, useUserStore } from '@/stores';
 
 export function useSignup() {
-  const [userId, setUserId] = useState('');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const {
+    userId, name, email, password, confirmPassword,
+    showPassword, showConfirmPassword,
+    setUserId, setName, setEmail, setPassword, setConfirmPassword,
+    setShowPassword, setShowConfirmPassword,
+    reset,
+  } = useSignupStore();
 
   const signupMutation = useMutation({
     mutationFn: async (params: {
       userId: string; name: string; email: string; password: string;
     }) => {
-      // 1. アカウント登録
       await register({
         user_id: params.userId,
         email: params.email,
         password: params.password,
         nickname: params.name,
       });
-      // 2. ログインしてトークン取得
       const loginData = await loginFn(params.email, params.password);
       await authStorage.setToken(loginData.token);
       await authStorage.setUserId(loginData.userId);
-      // 3. プロフィール作成
+      useUserStore.getState().setUserId(loginData.userId);
       await registerProfile({ name: params.name }, loginData.token);
     },
     onSuccess: () => {
+      reset();
       router.replace('/onboarding');
     },
     onError: (error) => {

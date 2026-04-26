@@ -1,57 +1,36 @@
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   CHALLENGES,
   PAST_CHALLENGES,
-  CHALLENGE_JOINED_KEY,
-  CHALLENGE_SUBMISSION_KEY,
-  CHALLENGE_PARTICIPATING_KEY,
   FIELD_ID_MAP,
   type MySubmissionResult,
 } from '@/models/challenges';
-import { addNotification, markPondUnread } from '@/models/notifications';
+import { useChallengesStore, useUserStore, useNotificationsStore } from '@/stores';
 
 export function useChallenges() {
-  const [joinedIds, setJoinedIds] = useState<string[]>([]);
-  const [submissionsMap, setSubmissionsMap] = useState<Record<string, MySubmissionResult>>({});
-  const [userFieldIds, setUserFieldIds] = useState<string[]>([]);
+  const {
+    joinedIds, submissionsMap, userFieldIds,
+    addJoinedId, removeJoinedId, addParticipatingId, removeParticipatingId,
+    setUserFieldIds,
+  } = useChallengesStore();
 
-  // 画面フォーカス時に毎回再読み込み（提出後に戻ったときも反映）
-  useFocusEffect(
-    useCallback(() => {
-      AsyncStorage.multiGet([
-        CHALLENGE_JOINED_KEY,
-        CHALLENGE_SUBMISSION_KEY,
-        'pond_ponds',
-      ]).then(([[, joinedStr], [, subStr], [, pondsStr]]) => {
-        if (joinedStr) setJoinedIds(JSON.parse(joinedStr));
-        if (subStr) setSubmissionsMap(JSON.parse(subStr));
-        if (pondsStr) {
-          const ponds: { field: string }[] = JSON.parse(pondsStr);
-          setUserFieldIds(ponds.map((p) => p.field));
-        }
-      });
-    }, [])
-  );
+  // userFieldIds をユーザーの池リストと同期
+  useFocusEffect(useCallback(() => {
+    const ponds = useUserStore.getState().ponds;
+    setUserFieldIds(ponds.map((p) => p.field));
+  }, [setUserFieldIds]));
 
   const joinChallenge = useCallback(async (id: string) => {
     const challenge = CHALLENGES.find((c) => c.id === id);
     if (!challenge || joinedIds.includes(id)) return;
 
-    const newJoined = [...joinedIds, id];
-    setJoinedIds(newJoined);
-    await AsyncStorage.setItem(CHALLENGE_JOINED_KEY, JSON.stringify(newJoined));
-
-    const partStr = await AsyncStorage.getItem(CHALLENGE_PARTICIPATING_KEY);
-    const partIds: string[] = partStr ? JSON.parse(partStr) : [];
-    if (!partIds.includes(id)) {
-      await AsyncStorage.setItem(CHALLENGE_PARTICIPATING_KEY, JSON.stringify([...partIds, id]));
-    }
+    addJoinedId(id);
+    addParticipatingId(id);
 
     // 対応する池のチャットにチャレンジカードを投稿
-    const pondsStr = await AsyncStorage.getItem('pond_ponds');
-    const ponds: { field: string; pondId: string }[] = pondsStr ? JSON.parse(pondsStr) : [];
+    const ponds = useUserStore.getState().ponds;
     const fieldId = FIELD_ID_MAP[challenge.field] ?? challenge.field;
     const matchingPond = ponds.find((p) => p.field === fieldId);
     if (matchingPond) {
@@ -59,12 +38,12 @@ export function useChallenges() {
       const existing = JSON.parse((await AsyncStorage.getItem(key)) ?? '[]');
       const alreadyPosted = existing.some((m: { challengeId: string }) => m.challengeId === id);
       if (!alreadyPosted) {
-        const avatarStr = await AsyncStorage.getItem('pond_avatar');
+        const avatarId = useUserStore.getState().avatarId;
         const cardMsg = {
           id: `challenge-${id}-${Date.now()}`,
           user: 'あなた',
           avatar: 'あ',
-          avatarId: avatarStr ?? 'fishbowl',
+          avatarId,
           level: challenge.level,
           content: `${challenge.title}にみんなで挑戦しましょう！`,
           time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
@@ -74,29 +53,23 @@ export function useChallenges() {
           challengeTitle: challenge.title,
         };
         await AsyncStorage.setItem(key, JSON.stringify([...existing, cardMsg]));
-        // 池に未読フラグ
-        await markPondUnread(matchingPond.pondId);
+        useUserStore.getState().markPondUnread(matchingPond.pondId);
       }
     }
 
-    // チャレンジ参加通知
-    const avatarStr2 = await AsyncStorage.getItem('pond_avatar');
-    await addNotification({
+    const avatarId = useUserStore.getState().avatarId;
+    useNotificationsStore.getState().addNotification({
       type: 'challenge_join',
       fromUser: 'あなた',
-      fromAvatarId: avatarStr2 ?? 'fishbowl',
+      fromAvatarId: avatarId,
       text: `「${challenge.title}」に参加しました`,
     });
-  }, [joinedIds]);
+  }, [joinedIds, addJoinedId, addParticipatingId]);
 
   const leaveChallenge = useCallback(async (id: string) => {
-    const newJoined = joinedIds.filter((j) => j !== id);
-    setJoinedIds(newJoined);
-    await AsyncStorage.setItem(CHALLENGE_JOINED_KEY, JSON.stringify(newJoined));
-    const partStr = await AsyncStorage.getItem(CHALLENGE_PARTICIPATING_KEY);
-    const partIds: string[] = partStr ? JSON.parse(partStr) : [];
-    await AsyncStorage.setItem(CHALLENGE_PARTICIPATING_KEY, JSON.stringify(partIds.filter((p) => p !== id)));
-  }, [joinedIds]);
+    removeJoinedId(id);
+    removeParticipatingId(id);
+  }, [removeJoinedId, removeParticipatingId]);
 
   const challenges = CHALLENGES
     .filter((c) => {
@@ -107,13 +80,12 @@ export function useChallenges() {
     .map((c) => ({
       ...c,
       joined: joinedIds.includes(c.id),
-      passed: submissionsMap[c.id]?.pass === true,
+      passed: (submissionsMap[c.id] as MySubmissionResult | undefined)?.pass === true,
       participants: c.participants + (joinedIds.includes(c.id) ? 1 : 0),
     }));
 
-  // 過去チャレンジ＋クリア済みアクティブチャレンジ
   const clearedActive = CHALLENGES
-    .filter((c) => submissionsMap[c.id]?.pass === true)
+    .filter((c) => (submissionsMap[c.id] as MySubmissionResult | undefined)?.pass === true)
     .filter((c) => {
       if (userFieldIds.length === 0) return true;
       const fieldId = FIELD_ID_MAP[c.field] ?? c.field;

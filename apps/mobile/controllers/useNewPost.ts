@@ -1,33 +1,24 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import { type PondEntry, MAX_CHARS, buildNewPost } from '@/models/new-post';
+import { MAX_CHARS, buildNewPost } from '@/models/new-post';
 import { usePostTimelineMutation } from '@/api';
 import { authStorage } from '@/services/auth';
+import { useNewPostStore, useUserStore } from '@/stores';
 
 export function useNewPost() {
-  const [ponds, setPonds] = useState<PondEntry[]>([]);
-  const [selectedField, setSelectedField] = useState<string | null>(null);
-  const [content, setContent] = useState('');
-  const [avatarId, setAvatarId] = useState('fishbowl');
+  const { selectedField, content, setSelectedField, setContent, reset } = useNewPostStore();
+  const { ponds, avatarId } = useUserStore();
   const inputRef = useRef<TextInput>(null);
 
   const postMutation = usePostTimelineMutation();
 
   useEffect(() => {
-    Promise.all([
-      AsyncStorage.getItem('pond_ponds'),
-      AsyncStorage.getItem('pond_avatar'),
-    ]).then(([pondStored, avatarStored]) => {
-      if (pondStored) {
-        const loaded: PondEntry[] = JSON.parse(pondStored);
-        setPonds(loaded);
-        if (loaded.length > 0) setSelectedField(loaded[0].field);
-      }
-      if (avatarStored) setAvatarId(avatarStored);
-    });
+    reset();
+    if (ponds.length > 0) setSelectedField(ponds[0].field);
     setTimeout(() => inputRef.current?.focus(), 300);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectedPond = ponds.find((p) => p.field === selectedField);

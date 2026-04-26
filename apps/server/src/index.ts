@@ -29,4 +29,6 @@ app.route('/profile', profileRouter)
 app.route('/timeline', timelineRouter)
 app.route('/challenge', challengeRouter)
 
+export type AppType = typeof app
+
 export default app
