@@ -20,7 +20,7 @@ export class D1TimelineRepository implements ITimelineRepository {
       .from(timelinePosts)
       .where(
         and(
-          inArray(timelinePosts.ike_category, categories),
+          inArray(timelinePosts.pond_category, categories),
           eq(timelinePosts.reply_to_id, null as unknown as string),
         )
       )

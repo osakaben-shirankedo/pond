@@ -1,20 +1,20 @@
 import { Hono } from 'hono'
 import { drizzle } from 'drizzle-orm/d1'
 import * as v from 'valibot'
-import { D1IkeRepository } from '../../infrastructure/repository/d1IkeRepository'
+import { D1PondRepository } from '../../infrastructure/repository/d1PondRepository'
 import { D1MessageRepository } from '../../infrastructure/repository/d1MessageRepository'
 import { D1UserRepository } from '../../infrastructure/repository/d1UserRepository'
 import { D1ProfileRepository } from '../../infrastructure/repository/d1ProfileRepository'
-import { GetIkeListUseCase } from '../../application/ike/getIkeList'
-import { GetIkeStatusUseCase } from '../../application/ike/getIkeStatus'
-import { GetIkeChatUseCase } from '../../application/ike/getIkeChat'
-import { PostMessageUseCase } from '../../application/ike/postMessage'
-import { EditMessageUseCase } from '../../application/ike/editMessage'
-import { DeleteMessageUseCase } from '../../application/ike/deleteMessage'
-import { ReplyMessageUseCase } from '../../application/ike/replyMessage'
-import { JoinIkeUseCase } from '../../application/ike/joinIke'
-import { ApplyIkeUseCase } from '../../application/ike/applyIke'
-import { PostMessageInputSchema } from '../../domain/message/entity'
+import { GetPondListUseCase } from '../../application/pond/getPondList'
+import { GetPondStatusUseCase } from '../../application/pond/getPondStatus'
+import { GetPondChatUseCase } from '../../application/pond/getPondChat'
+import { PostMessageUseCase } from '../../application/pond/postMessage'
+import { EditMessageUseCase } from '../../application/pond/editMessage'
+import { DeleteMessageUseCase } from '../../application/pond/deleteMessage'
+import { ReplyMessageUseCase } from '../../application/pond/replyMessage'
+import { JoinPondUseCase } from '../../application/pond/joinPond'
+import { ApplyPondUseCase } from '../../application/pond/applyPond'
+import { PostMessageInput } from '../../domain/message/repository'
 import { authMiddleware } from '../middleware/auth'
 import type { Env } from '../../index'
 
@@ -140,17 +140,17 @@ router.use('*', authMiddleware)
 
 router.get('/list', async (c) => {
   const db = drizzle(c.env.POND_DB)
-  const ikeRepo = new D1IkeRepository(db)
+  const pondRepo = new D1PondRepository(db)
   const userRepo = new D1UserRepository(db)
-  const ikes = await new GetIkeListUseCase(ikeRepo, userRepo).execute(c.get('userId'))
-  return c.json(ikes)
+  const ponds = await new GetPondListUseCase(pondRepo, userRepo).execute(c.get('userId'))
+  return c.json(ponds)
 })
 
 router.get('/available', async (c) => {
   const db = drizzle(c.env.POND_DB)
-  const ikeRepo = new D1IkeRepository(db)
-  const ikes = await ikeRepo.findAvailable(c.get('userId'))
-  return c.json(ikes)
+  const pondRepo = new D1PondRepository(db)
+  const ponds = await pondRepo.findAvailable(c.get('userId'))
+  return c.json(ponds)
 })
 
 router.post('/apply', async (c) => {
@@ -163,77 +163,77 @@ router.post('/apply', async (c) => {
   if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)
-  const ikeRepo = new D1IkeRepository(db)
+  const pondRepo = new D1PondRepository(db)
   const userRepo = new D1UserRepository(db)
   try {
-    const ike = await new ApplyIkeUseCase(ikeRepo, userRepo, c.env.CLAUDE_API_KEY ?? '').execute(
+    const pond = await new ApplyPondUseCase(pondRepo, userRepo, c.env.CLAUDE_API_KEY ?? '').execute(
       c.get('userId'),
       parsed.output.field,
       parsed.output.level,
       parsed.output.purpose,
     )
-    return c.json(ike, 201)
+    return c.json(pond, 201)
   } catch (e) {
-    if (e instanceof Error && e.message === 'NO_IKE_AVAILABLE') return c.json({ error: 'NO_IKE_AVAILABLE' }, 404)
+    if (e instanceof Error && e.message === 'NO_POND_AVAILABLE') return c.json({ error: 'NO_POND_AVAILABLE' }, 404)
     if (e instanceof Error && e.message === 'USER_NOT_FOUND') return c.json({ error: 'USER_NOT_FOUND' }, 404)
     throw e
   }
 })
 
-router.get('/:ike_id/members', async (c) => {
+router.get('/:pond_id/members', async (c) => {
   const db = drizzle(c.env.POND_DB)
-  const ikeRepo = new D1IkeRepository(db)
+  const pondRepo = new D1PondRepository(db)
   const profileRepo = new D1ProfileRepository(db)
-  const ike = await ikeRepo.findById(c.req.param('ike_id'))
-  if (!ike) return c.json({ error: 'IKE_NOT_FOUND' }, 404)
-  const profiles = await profileRepo.findByUserIds(ike.member_ids)
+  const pond = await pondRepo.findById(c.req.param('pond_id'))
+  if (!pond) return c.json({ error: 'POND_NOT_FOUND' }, 404)
+  const profiles = await profileRepo.findByUserIds(pond.member_ids)
   return c.json(profiles.map((p) => ({ user_id: p.user_id, name: p.name, avatar: p.avatar })))
 })
 
-router.get('/:ike_id/status', async (c) => {
+router.get('/:pond_id/status', async (c) => {
   const db = drizzle(c.env.POND_DB)
-  const ikeRepo = new D1IkeRepository(db)
+  const pondRepo = new D1PondRepository(db)
   try {
-    const ike = await new GetIkeStatusUseCase(ikeRepo).execute(c.req.param('ike_id'))
-    return c.json(ike)
+    const pond = await new GetPondStatusUseCase(pondRepo).execute(c.req.param('pond_id'))
+    return c.json(pond)
   } catch (e) {
-    if (e instanceof Error && e.message === 'IKE_NOT_FOUND') return c.json({ error: 'IKE_NOT_FOUND' }, 404)
+    if (e instanceof Error && e.message === 'POND_NOT_FOUND') return c.json({ error: 'POND_NOT_FOUND' }, 404)
     throw e
   }
 })
 
-router.get('/:ike_id/chat', async (c) => {
+router.get('/:pond_id/chat', async (c) => {
   const db = drizzle(c.env.POND_DB)
-  const ikeRepo = new D1IkeRepository(db)
+  const pondRepo = new D1PondRepository(db)
   const messageRepo = new D1MessageRepository(db)
   try {
-    const messages = await new GetIkeChatUseCase(ikeRepo, messageRepo).execute(c.req.param('ike_id'))
+    const messages = await new GetPondChatUseCase(pondRepo, messageRepo).execute(c.req.param('pond_id'))
     return c.json(messages)
   } catch (e) {
-    if (e instanceof Error && e.message === 'IKE_NOT_FOUND') return c.json({ error: 'IKE_NOT_FOUND' }, 404)
+    if (e instanceof Error && e.message === 'POND_NOT_FOUND') return c.json({ error: 'POND_NOT_FOUND' }, 404)
     throw e
   }
 })
 
-router.post('/:ike_id/chat/message', async (c) => {
+router.post('/:pond_id/chat/message', async (c) => {
   const body = await c.req.json()
-  const parsed = v.safeParse(PostMessageInputSchema, body)
+  const parsed = v.safeParse(PostMessageInput, body)
   if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)
-  const ikeRepo = new D1IkeRepository(db)
+  const pondRepo = new D1PondRepository(db)
   const messageRepo = new D1MessageRepository(db)
   try {
-    const message = await new PostMessageUseCase(ikeRepo, messageRepo).execute(c.req.param('ike_id'), c.get('userId'), parsed.output)
+    const message = await new PostMessageUseCase(pondRepo, messageRepo).execute(c.req.param('pond_id'), c.get('userId'), parsed.output)
     return c.json(message, 201)
   } catch (e) {
-    if (e instanceof Error && e.message === 'IKE_NOT_FOUND') return c.json({ error: 'IKE_NOT_FOUND' }, 404)
+    if (e instanceof Error && e.message === 'POND_NOT_FOUND') return c.json({ error: 'POND_NOT_FOUND' }, 404)
     if (e instanceof Error && e.message === 'NOT_A_MEMBER') return c.json({ error: 'NOT_A_MEMBER' }, 403)
     throw e
   }
 })
 
-router.post('/:ike_id/chat/:message_id/edit', async (c) => {
+router.post('/:pond_id/chat/:message_id/edit', async (c) => {
   const body = await c.req.json()
   const parsed = v.safeParse(v.object({ content: v.pipe(v.string(), v.minLength(1)) }), body)
   if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
@@ -250,7 +250,7 @@ router.post('/:ike_id/chat/:message_id/edit', async (c) => {
   }
 })
 
-router.post('/:ike_id/chat/:message_id/delete', async (c) => {
+router.post('/:pond_id/chat/:message_id/delete', async (c) => {
   const db = drizzle(c.env.POND_DB)
   const messageRepo = new D1MessageRepository(db)
   try {
@@ -263,53 +263,53 @@ router.post('/:ike_id/chat/:message_id/delete', async (c) => {
   }
 })
 
-router.post('/:ike_id/join', async (c) => {
+router.post('/:pond_id/join', async (c) => {
   const db = drizzle(c.env.POND_DB)
-  const ikeRepo = new D1IkeRepository(db)
+  const pondRepo = new D1PondRepository(db)
   const userRepo = new D1UserRepository(db)
   try {
-    const ike = await new JoinIkeUseCase(ikeRepo, userRepo).execute(c.req.param('ike_id'), c.get('userId'))
-    return c.json(ike, 201)
+    const pond = await new JoinPondUseCase(pondRepo, userRepo).execute(c.req.param('pond_id'), c.get('userId'))
+    return c.json(pond, 201)
   } catch (e) {
-    if (e instanceof Error && e.message === 'IKE_NOT_FOUND') return c.json({ error: 'IKE_NOT_FOUND' }, 404)
+    if (e instanceof Error && e.message === 'POND_NOT_FOUND') return c.json({ error: 'POND_NOT_FOUND' }, 404)
     if (e instanceof Error && e.message === 'ALREADY_A_MEMBER') return c.json({ error: 'ALREADY_A_MEMBER' }, 409)
     throw e
   }
 })
 
-router.post('/:ike_id/leave', async (c) => {
+router.post('/:pond_id/leave', async (c) => {
   const db = drizzle(c.env.POND_DB)
-  const ikeRepo = new D1IkeRepository(db)
+  const pondRepo = new D1PondRepository(db)
   const userRepo = new D1UserRepository(db)
-  const ikeId = c.req.param('ike_id')
+  const pondId = c.req.param('pond_id')
   const userId = c.get('userId')
 
-  const [ike, user] = await Promise.all([ikeRepo.findById(ikeId), userRepo.findById(userId)])
-  if (!ike) return c.json({ error: 'IKE_NOT_FOUND' }, 404)
-  if (!ike.member_ids.includes(userId)) return c.json({ error: 'NOT_A_MEMBER' }, 403)
+  const [pond, user] = await Promise.all([pondRepo.findById(pondId), userRepo.findById(userId)])
+  if (!pond) return c.json({ error: 'POND_NOT_FOUND' }, 404)
+  if (!pond.member_ids.includes(userId)) return c.json({ error: 'NOT_A_MEMBER' }, 403)
   if (!user) return c.json({ error: 'USER_NOT_FOUND' }, 404)
 
   const now = new Date().toISOString()
   await Promise.all([
-    ikeRepo.update({ ...ike, member_ids: ike.member_ids.filter((id) => id !== userId), updated_at: now }),
-    userRepo.update({ ...user, belonging_ike_ids: user.belonging_ike_ids.filter((id) => id !== ikeId), updated_at: now }),
+    pondRepo.update({ ...pond, member_ids: pond.member_ids.filter((id) => id !== userId), updated_at: now }),
+    userRepo.update({ ...user, belonging_pond_ids: user.belonging_pond_ids.filter((id) => id !== pondId), updated_at: now }),
   ])
   return c.json({ success: true })
 })
 
-router.post('/:ike_id/chat/:message_id/reply', async (c) => {
+router.post('/:pond_id/chat/:message_id/reply', async (c) => {
   const body = await c.req.json()
-  const parsed = v.safeParse(PostMessageInputSchema, body)
+  const parsed = v.safeParse(PostMessageInput, body)
   if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)
-  const ikeRepo = new D1IkeRepository(db)
+  const pondRepo = new D1PondRepository(db)
   const messageRepo = new D1MessageRepository(db)
   try {
-    const message = await new ReplyMessageUseCase(ikeRepo, messageRepo).execute(c.req.param('ike_id'), c.req.param('message_id'), c.get('userId'), parsed.output)
+    const message = await new ReplyMessageUseCase(pondRepo, messageRepo).execute(c.req.param('pond_id'), c.req.param('message_id'), c.get('userId'), parsed.output)
     return c.json(message, 201)
   } catch (e) {
-    if (e instanceof Error && e.message === 'IKE_NOT_FOUND') return c.json({ error: 'IKE_NOT_FOUND' }, 404)
+    if (e instanceof Error && e.message === 'POND_NOT_FOUND') return c.json({ error: 'POND_NOT_FOUND' }, 404)
     if (e instanceof Error && e.message === 'NOT_A_MEMBER') return c.json({ error: 'NOT_A_MEMBER' }, 403)
     if (e instanceof Error && e.message === 'MESSAGE_NOT_FOUND') return c.json({ error: 'MESSAGE_NOT_FOUND' }, 404)
     throw e

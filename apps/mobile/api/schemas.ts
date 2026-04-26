@@ -44,8 +44,8 @@ export type ServerProfile = v.InferOutput<typeof ServerProfileSchema>
 export const TimelineReplySchema = v.object({
   id: v.string(),
   user_id: v.string(),
-  ike_id: v.string(),
-  ike_category: v.string(),
+  pond_id: v.string(),
+  pond_category: v.string(),
   content: v.string(),
   reply_to_id: v.nullable(v.string()),
   likes_count: v.number(),
@@ -59,8 +59,8 @@ export type TimelineReply = v.InferOutput<typeof TimelineReplySchema>
 export const TimelinePostViewSchema = v.object({
   id: v.string(),
   user_id: v.string(),
-  ike_id: v.string(),
-  ike_category: v.string(),
+  pond_id: v.string(),
+  pond_category: v.string(),
   content: v.string(),
   reply_to_id: v.nullable(v.string()),
   likes_count: v.number(),
@@ -81,21 +81,21 @@ export const ReplyResponseSchema = v.object({
 export type ReplyResponse = v.InferOutput<typeof ReplyResponseSchema>
 
 // ─────────────────────────────────────────
-// Ike (池)
+// Pond (池)
 // ─────────────────────────────────────────
 
-export const ServerIkeSchema = v.object({
+export const ServerPondSchema = v.object({
   id: v.string(),
-  ike_name: v.string(),
+  name: v.string(),
   description: v.string(),
   member_ids: v.array(v.string()),
   chat_room_id: v.string(),
   created_at: v.string(),
   updated_at: v.string(),
 })
-export type ServerIke = v.InferOutput<typeof ServerIkeSchema>
+export type ServerPond = v.InferOutput<typeof ServerPondSchema>
 
-export const ServerIkeListSchema = v.array(ServerIkeSchema)
+export const ServerPondListSchema = v.array(ServerPondSchema)
 
 export const MemberProfileSchema = v.object({
   user_id: v.string(),

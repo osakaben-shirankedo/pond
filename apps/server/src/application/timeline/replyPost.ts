@@ -12,8 +12,8 @@ export class ReplyPostUseCase {
     const reply: TimelinePost = {
       id: crypto.randomUUID(),
       user_id: userId,
-      ike_id: parent.ike_id,
-      ike_category: parent.ike_category,
+      pond_id: parent.pond_id,
+      pond_category: parent.pond_category,
       content,
       reply_to_id: postId,
       created_at: now,

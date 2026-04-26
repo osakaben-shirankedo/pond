@@ -6,7 +6,7 @@ export const users = sqliteTable('users', {
   nickname: text('nickname').notNull(),
   email: text('email').notNull().unique(),
   encrypted_password: text('encrypted_password').notNull(),
-  belonging_ike_ids: text('belonging_ike_ids').notNull().default('[]'),
+  belonging_pond_ids: text('belonging_pond_ids').notNull().default('[]'),
   created_at: text('created_at').notNull(),
   updated_at: text('updated_at').notNull(),
 })
@@ -27,9 +27,9 @@ export const chatRooms = sqliteTable('chat_rooms', {
   updated_at: text('updated_at').notNull(),
 })
 
-export const ikes = sqliteTable('ikes', {
+export const ponds = sqliteTable('ponds', {
   id: text('id').primaryKey(),
-  ike_name: text('ike_name').notNull(),
+  name: text('name').notNull(),
   description: text('description').notNull(),
   member_ids: text('member_ids').notNull().default('[]'),
   chat_room_id: text('chat_room_id').notNull().references(() => chatRooms.id),
@@ -51,8 +51,8 @@ export const messages = sqliteTable('messages', {
 export const timelinePosts = sqliteTable('timeline_posts', {
   id: text('id').primaryKey(),
   user_id: text('user_id').notNull().references(() => users.id),
-  ike_id: text('ike_id').notNull(),
-  ike_category: text('ike_category').notNull(),
+  pond_id: text('pond_id').notNull(),
+  pond_category: text('pond_category').notNull(),
   content: text('content').notNull(),
   reply_to_id: text('reply_to_id'),
   created_at: text('created_at').notNull(),

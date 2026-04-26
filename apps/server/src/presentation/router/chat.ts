@@ -1,13 +1,13 @@
 import { Hono } from 'hono'
 import { drizzle } from 'drizzle-orm/d1'
 import * as v from 'valibot'
-import { D1IkeRepository } from '../../infrastructure/repository/d1IkeRepository'
+import { D1PondRepository } from '../../infrastructure/repository/d1PondRepository'
 import { D1MessageRepository } from '../../infrastructure/repository/d1MessageRepository'
-import { PostMessageUseCase } from '../../application/ike/postMessage'
-import { EditMessageUseCase } from '../../application/ike/editMessage'
-import { DeleteMessageUseCase } from '../../application/ike/deleteMessage'
-import { ReplyMessageUseCase } from '../../application/ike/replyMessage'
-import { PostMessageInputSchema } from '../../domain/message/entity'
+import { PostMessageUseCase } from '../../application/pond/postMessage'
+import { EditMessageUseCase } from '../../application/pond/editMessage'
+import { DeleteMessageUseCase } from '../../application/pond/deleteMessage'
+import { ReplyMessageUseCase } from '../../application/pond/replyMessage'
+import { PostMessageInput } from '../../domain/message/repository'
 import { authMiddleware } from '../middleware/auth'
 import type { Env } from '../../index'
 
@@ -18,12 +18,12 @@ router.use('*', authMiddleware)
 // チャットルームIDでメッセージ一覧取得
 router.get('/:chat_room_id', async (c) => {
   const db = drizzle(c.env.POND_DB)
-  const ikeRepo = new D1IkeRepository(db)
+  const pondRepo = new D1PondRepository(db)
   const messageRepo = new D1MessageRepository(db)
 
-  const ike = await ikeRepo.findByChatRoomId(c.req.param('chat_room_id'))
-  if (!ike) return c.json({ error: 'NOT_FOUND' }, 404)
-  if (!ike.member_ids.includes(c.get('userId'))) return c.json({ error: 'NOT_A_MEMBER' }, 403)
+  const pond = await pondRepo.findByChatRoomId(c.req.param('chat_room_id'))
+  if (!pond) return c.json({ error: 'NOT_FOUND' }, 404)
+  if (!pond.member_ids.includes(c.get('userId'))) return c.json({ error: 'NOT_A_MEMBER' }, 403)
 
   const messages = await messageRepo.findByChatRoomId(c.req.param('chat_room_id'))
   return c.json(messages)
@@ -32,18 +32,18 @@ router.get('/:chat_room_id', async (c) => {
 // メッセージ送信
 router.post('/:chat_room_id/message', async (c) => {
   const body = await c.req.json()
-  const parsed = v.safeParse(PostMessageInputSchema, body)
+  const parsed = v.safeParse(PostMessageInput, body)
   if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)
-  const ikeRepo = new D1IkeRepository(db)
+  const pondRepo = new D1PondRepository(db)
   const messageRepo = new D1MessageRepository(db)
 
-  const ike = await ikeRepo.findByChatRoomId(c.req.param('chat_room_id'))
-  if (!ike) return c.json({ error: 'NOT_FOUND' }, 404)
+  const pond = await pondRepo.findByChatRoomId(c.req.param('chat_room_id'))
+  if (!pond) return c.json({ error: 'NOT_FOUND' }, 404)
 
   try {
-    const message = await new PostMessageUseCase(ikeRepo, messageRepo).execute(ike.id, c.get('userId'), parsed.output)
+    const message = await new PostMessageUseCase(pondRepo, messageRepo).execute(pond.id, c.get('userId'), parsed.output)
     return c.json(message, 201)
   } catch (e) {
     if (e instanceof Error && e.message === 'NOT_A_MEMBER') return c.json({ error: 'NOT_A_MEMBER' }, 403)
@@ -88,18 +88,18 @@ router.post('/:chat_room_id/:message_id/delete', async (c) => {
 // リプライ
 router.post('/:chat_room_id/:message_id/reply', async (c) => {
   const body = await c.req.json()
-  const parsed = v.safeParse(PostMessageInputSchema, body)
+  const parsed = v.safeParse(PostMessageInput, body)
   if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)
-  const ikeRepo = new D1IkeRepository(db)
+  const pondRepo = new D1PondRepository(db)
   const messageRepo = new D1MessageRepository(db)
 
-  const ike = await ikeRepo.findByChatRoomId(c.req.param('chat_room_id'))
-  if (!ike) return c.json({ error: 'NOT_FOUND' }, 404)
+  const pond = await pondRepo.findByChatRoomId(c.req.param('chat_room_id'))
+  if (!pond) return c.json({ error: 'NOT_FOUND' }, 404)
 
   try {
-    const message = await new ReplyMessageUseCase(ikeRepo, messageRepo).execute(ike.id, c.req.param('message_id'), c.get('userId'), parsed.output)
+    const message = await new ReplyMessageUseCase(pondRepo, messageRepo).execute(pond.id, c.req.param('message_id'), c.get('userId'), parsed.output)
     return c.json(message, 201)
   } catch (e) {
     if (e instanceof Error && e.message === 'NOT_A_MEMBER') return c.json({ error: 'NOT_A_MEMBER' }, 403)

@@ -28,7 +28,7 @@ export async function fetchTimeline(
 }
 
 export async function postTimelinePost(
-  body: { ike_id: string; ike_category: string; content: string },
+  body: { pond_id: string; pond_category: string; content: string },
   token: string,
 ): Promise<TimelinePostView> {
   const { data, error } = await api.post('/timeline/post', body, token)

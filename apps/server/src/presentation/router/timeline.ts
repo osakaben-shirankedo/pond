@@ -10,7 +10,7 @@ import { LikePostUseCase } from '../../application/timeline/likePost'
 import { UnlikePostUseCase } from '../../application/timeline/unlikePost'
 import { ReplyPostUseCase } from '../../application/timeline/replyPost'
 import { UnreplyPostUseCase } from '../../application/timeline/unreplyPost'
-import { TimelinePostInputSchema, ReplyPostInputSchema } from '../../domain/timeline/entity'
+import { TimelinePostInput, ReplyPostInput } from '../../domain/timeline/repository'
 import type { Env } from '../../index'
 
 const router = new Hono<Env>()
@@ -26,12 +26,12 @@ router.get('/', async (c) => {
 
   // ユーザーの池からカテゴリ一覧を取得
   const user = await userRepo.findById(userId)
-  // belonging_ike_ids は文字列化された配列なので parse
+  // belonging_pond_ids は文字列化された配列なので parse
   let categories: string[] = []
   if (user) {
-    const ikeIds: string[] = typeof user.belonging_ike_ids === 'string'
-      ? JSON.parse(user.belonging_ike_ids)
-      : user.belonging_ike_ids
+    const ikeIds: string[] = typeof user.belonging_pond_ids === 'string'
+      ? JSON.parse(user.belonging_pond_ids)
+      : user.belonging_pond_ids
     // カテゴリはクエリパラメータで渡す設計にする（クライアントが知っている）
     const qCategories = c.req.query('categories')
     if (qCategories) {
@@ -50,7 +50,7 @@ router.get('/', async (c) => {
 // 投稿
 router.post('/post', async (c) => {
   const body = await c.req.json()
-  const parsed = v.safeParse(TimelinePostInputSchema, body)
+  const parsed = v.safeParse(TimelinePostInput, body)
   if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)
@@ -91,7 +91,7 @@ router.post('/unlike/:post_id', async (c) => {
 // リプライ
 router.post('/reply/:post_id', async (c) => {
   const body = await c.req.json()
-  const parsed = v.safeParse(ReplyPostInputSchema, body)
+  const parsed = v.safeParse(ReplyPostInput, body)
   if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)

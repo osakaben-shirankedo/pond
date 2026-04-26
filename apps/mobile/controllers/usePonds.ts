@@ -2,33 +2,33 @@ import { useMemo } from 'react';
 import { router } from 'expo-router';
 import { type PondEntry, LEVEL_ORDER } from '@/models/pond';
 import { FIELD_LABELS } from '@/models/field';
-import { useIkeListQuery, type ServerIke } from '@/api';
+import { usePondListQuery, type ServerPond } from '@/api';
 import type { LevelKey } from '@/constants/levels';
 import { useUserStore } from '@/stores';
 
-function serverIkeToPondEntry(ike: ServerIke): PondEntry {
+function serverPondToPondEntry(pond: ServerPond): PondEntry {
   return {
-    field: ike.ike_name,
+    field: pond.name,
     level: '澄み池' as LevelKey,
-    pondId: ike.id,
+    pondId: pond.id,
   };
 }
 
 export function usePonds() {
   const { ponds: localPonds, unreadPondIds } = useUserStore();
 
-  const { data: serverIkes } = useIkeListQuery();
+  const { data: serverPonds } = usePondListQuery();
 
   // ローカル池とサーバー池をマージ（サーバーが優先）
   const ponds = useMemo(() => {
-    if (serverIkes && serverIkes.length > 0) {
-      const serverPonds = serverIkes.map(serverIkeToPondEntry);
+    if (serverPonds && serverPonds.length > 0) {
+      const mapped = serverPonds.map(serverPondToPondEntry);
       const localPondIds = new Set(localPonds.map((p) => p.pondId));
-      const serverOnly = serverPonds.filter((p) => !localPondIds.has(p.pondId));
+      const serverOnly = mapped.filter((p) => !localPondIds.has(p.pondId));
       return [...localPonds, ...serverOnly];
     }
     return localPonds;
-  }, [localPonds, serverIkes]);
+  }, [localPonds, serverPonds]);
 
   const handleAddPond = () => router.push('/');
   const handleReassess = (field: string) =>

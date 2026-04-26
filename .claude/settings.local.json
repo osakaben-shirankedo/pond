@@ -1,0 +1,5 @@
+{
+  "permissions": {
+    "allow": ["Read(//c/Users/beben/dev/osakaben/pond_mid/pond/**)"]
+  }
+}

@@ -11,7 +11,7 @@ import {
   type FieldId,
 } from '@/models/assessment';
 import { assignPondId } from '@/models/pond-instance';
-import { applyIke } from '@/api/endpoints/ike';
+import { applyPond } from '@/api/endpoints/pond';
 import { authStorage } from '@/services/auth';
 import { useAssessmentStore, useUserStore } from '@/stores';
 
@@ -91,8 +91,8 @@ export function useAssessment(field: FieldId | undefined, queue: string | undefi
     const token = await authStorage.getToken();
     if (token) {
       try {
-        const ike = await applyIke(resolvedFieldId, lv, purpose, token);
-        pondId = ike.id;
+        const pond = await applyPond(resolvedFieldId, lv, purpose, token);
+        pondId = pond.id;
       } catch {
         pondId = assignPondId(resolvedFieldId, lv);
       }

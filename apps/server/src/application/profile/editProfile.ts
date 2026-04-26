@@ -1,5 +1,5 @@
 import type { IProfileRepository } from '../../domain/profile/repository'
-import type { UpdateProfileInput } from '../../domain/profile/entity'
+import type { UpdateProfileInput } from '../../domain/profile/repository'
 import type { Profile } from '../../domain/profile/entity'
 
 export class EditProfileUseCase {

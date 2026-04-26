@@ -8,8 +8,8 @@ import { RegisterUseCase } from '../../application/auth/register'
 import { RegisterProfileUseCase } from '../../application/auth/registerProfile'
 import { LoginUseCase } from '../../application/auth/login'
 import { LogoutUseCase } from '../../application/auth/logout'
-import { CreateUserInputSchema } from '../../domain/user/entity'
-import { CreateProfileInputSchema } from '../../domain/profile/entity'
+import { CreateUserInput } from '../../domain/user/repository'
+import { CreateProfileInput } from '../../domain/profile/repository'
 import { authMiddleware } from '../middleware/auth'
 import type { Env } from '../../index'
 
@@ -17,7 +17,7 @@ const router = new Hono<Env>()
 
 router.post('/register', async (c) => {
   const body = await c.req.json()
-  const parsed = v.safeParse(CreateUserInputSchema, body)
+  const parsed = v.safeParse(CreateUserInput, body)
   if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)
@@ -36,7 +36,7 @@ router.post('/register', async (c) => {
 
 router.post('/register/profile', authMiddleware, async (c) => {
   const body = await c.req.json()
-  const parsed = v.safeParse(CreateProfileInputSchema, body)
+  const parsed = v.safeParse(CreateProfileInput, body)
   if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)

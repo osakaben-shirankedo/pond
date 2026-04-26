@@ -36,8 +36,8 @@ export function useNewPost() {
 
     if (token) {
       await postMutation.mutateAsync({
-        ike_id: selectedPond.pondId,
-        ike_category: selectedPond.field,
+        pond_id: selectedPond.pondId,
+        pond_category: selectedPond.field,
         content: content.trim(),
       });
     } else {

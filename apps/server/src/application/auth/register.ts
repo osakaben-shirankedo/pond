@@ -1,5 +1,5 @@
 import type { IUserRepository } from '../../domain/user/repository'
-import type { CreateUserInput } from '../../domain/user/entity'
+import type { CreateUserInput } from '../../domain/user/repository'
 import type { User } from '../../domain/user/entity'
 
 async function hashPassword(password: string): Promise<string> {
@@ -29,7 +29,7 @@ export class RegisterUseCase {
       nickname: input.nickname,
       email: input.email,
       encrypted_password: await hashPassword(input.password),
-      belonging_ike_ids: [],
+      belonging_pond_ids: [],
       created_at: now,
       updated_at: now,
     }

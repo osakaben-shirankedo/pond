@@ -9,11 +9,11 @@ export const queryKeys = {
     all: () => ['timeline'] as const,
     list: (categories: string) => ['timeline', 'list', categories] as const,
   },
-  ike: {
-    all: () => ['ike'] as const,
-    list: () => ['ike', 'list'] as const,
-    members: (ikeId: string) => ['ike', ikeId, 'members'] as const,
-    chat: (ikeId: string) => ['ike', ikeId, 'chat'] as const,
+  pond: {
+    all: () => ['pond'] as const,
+    list: () => ['pond', 'list'] as const,
+    members: (pondId: string) => ['pond', pondId, 'members'] as const,
+    chat: (pondId: string) => ['pond', pondId, 'chat'] as const,
   },
   profile: {
     all: () => ['profile'] as const,

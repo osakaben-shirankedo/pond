@@ -6,7 +6,7 @@ export type {
   TimelinePostView,
   TimelineReply,
   ReplyResponse,
-  ServerIke,
+  ServerPond,
   MemberProfile,
   ServerMessage,
   AiFishResponse,
@@ -22,18 +22,18 @@ export {
 } from './queries/useTimelineApi'
 
 export {
-  useIkeListQuery,
-  useIkeMembersQuery,
-  useIkeChatQuery,
+  usePondListQuery,
+  usePondMembersQuery,
+  usePondChatQuery,
   useSendMessageMutation,
   useEditMessageMutation,
   useReplyToMessageMutation,
   useDeleteMessageMutation,
-  useJoinIkeMutation,
-  useLeaveIkeMutation,
-  useApplyIkeMutation,
+  useJoinPondMutation,
+  useLeavePondMutation,
+  useApplyPondMutation,
   useAiFishMutation,
-} from './queries/useIkeApi'
+} from './queries/usePondApi'
 
 export {
   useProfileQuery,

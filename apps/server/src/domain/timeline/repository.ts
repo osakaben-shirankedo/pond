@@ -1,4 +1,17 @@
+import * as v from 'valibot'
 import type { TimelinePost } from './entity'
+
+export const TimelinePostInput = v.object({
+  pond_id: v.pipe(v.string(), v.minLength(1)),
+  pond_category: v.pipe(v.string(), v.minLength(1)),
+  content: v.pipe(v.string(), v.minLength(1), v.maxLength(300)),
+})
+export type TimelinePostInput = v.InferOutput<typeof TimelinePostInput>
+
+export const ReplyPostInput = v.object({
+  content: v.pipe(v.string(), v.minLength(1), v.maxLength(300)),
+})
+export type ReplyPostInput = v.InferOutput<typeof ReplyPostInput>
 
 export interface ITimelineRepository {
   findByCategories(categories: string[]): Promise<TimelinePost[]>

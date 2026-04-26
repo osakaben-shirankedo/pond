@@ -1,5 +1,6 @@
 import type { ITimelineRepository } from '../../domain/timeline/repository'
-import type { TimelinePostInput, TimelinePost } from '../../domain/timeline/entity'
+import type { TimelinePostInput } from '../../domain/timeline/repository'
+import type { TimelinePost } from '../../domain/timeline/entity'
 
 export class PostTimelineUseCase {
   constructor(private readonly timelineRepo: ITimelineRepository) {}
@@ -9,8 +10,8 @@ export class PostTimelineUseCase {
     const post: TimelinePost = {
       id: crypto.randomUUID(),
       user_id: userId,
-      ike_id: input.ike_id,
-      ike_category: input.ike_category,
+      pond_id: input.pond_id,
+      pond_category: input.pond_category,
       content: input.content,
       reply_to_id: null,
       created_at: now,

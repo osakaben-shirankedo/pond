@@ -1,13 +1,13 @@
 import * as v from 'valibot'
 import { api } from '@/services/api'
 import {
-  ServerIkeListSchema,
-  ServerIkeSchema,
+  ServerPondListSchema,
+  ServerPondSchema,
   MemberProfileListSchema,
   ServerMessageListSchema,
   ServerMessageSchema,
   AiFishResponseSchema,
-  type ServerIke,
+  type ServerPond,
   type MemberProfile,
   type ServerMessage,
   type AiFishResponse,
@@ -22,86 +22,86 @@ function parseOrThrow<T>(schema: v.GenericSchema<unknown, T>, data: unknown, lab
   return result.output
 }
 
-export async function fetchIkeList(token: string): Promise<ServerIke[]> {
-  const { data, error } = await api.get('/ike/list', token)
+export async function fetchPondList(token: string): Promise<ServerPond[]> {
+  const { data, error } = await api.get('/pond/list', token)
   if (error) throw new Error(error)
-  return parseOrThrow(ServerIkeListSchema, data, 'fetchIkeList')
+  return parseOrThrow(ServerPondListSchema, data, 'fetchPondList')
 }
 
-export async function fetchIkeMembers(ikeId: string, token: string): Promise<MemberProfile[]> {
-  const { data, error } = await api.get(`/ike/${ikeId}/members`, token)
+export async function fetchPondMembers(pondId: string, token: string): Promise<MemberProfile[]> {
+  const { data, error } = await api.get(`/pond/${pondId}/members`, token)
   if (error) throw new Error(error)
-  return parseOrThrow(MemberProfileListSchema, data, 'fetchIkeMembers')
+  return parseOrThrow(MemberProfileListSchema, data, 'fetchPondMembers')
 }
 
-export async function fetchIkeChat(ikeId: string, token: string): Promise<ServerMessage[]> {
-  const { data, error } = await api.get(`/ike/${ikeId}/chat`, token)
+export async function fetchPondChat(pondId: string, token: string): Promise<ServerMessage[]> {
+  const { data, error } = await api.get(`/pond/${pondId}/chat`, token)
   if (error) throw new Error(error)
-  return parseOrThrow(ServerMessageListSchema, data, 'fetchIkeChat')
+  return parseOrThrow(ServerMessageListSchema, data, 'fetchPondChat')
 }
 
 export async function sendMessage(
-  ikeId: string,
+  pondId: string,
   content: string,
   token: string,
   publicRange = 'all',
 ): Promise<ServerMessage> {
-  const { data, error } = await api.post(`/ike/${ikeId}/chat/message`, { content, public_range: publicRange }, token)
+  const { data, error } = await api.post(`/pond/${pondId}/chat/message`, { content, public_range: publicRange }, token)
   if (error) throw new Error(error)
   return parseOrThrow(ServerMessageSchema, data, 'sendMessage')
 }
 
 export async function editMessage(
-  ikeId: string,
+  pondId: string,
   messageId: string,
   content: string,
   token: string,
 ): Promise<ServerMessage> {
-  const { data, error } = await api.post(`/ike/${ikeId}/chat/${messageId}/edit`, { content }, token)
+  const { data, error } = await api.post(`/pond/${pondId}/chat/${messageId}/edit`, { content }, token)
   if (error) throw new Error(error)
   return parseOrThrow(ServerMessageSchema, data, 'editMessage')
 }
 
 export async function replyToMessage(
-  ikeId: string,
+  pondId: string,
   messageId: string,
   content: string,
   token: string,
 ): Promise<ServerMessage> {
-  const { data, error } = await api.post(`/ike/${ikeId}/chat/${messageId}/reply`, { content }, token)
+  const { data, error } = await api.post(`/pond/${pondId}/chat/${messageId}/reply`, { content }, token)
   if (error) throw new Error(error)
   return parseOrThrow(ServerMessageSchema, data, 'replyToMessage')
 }
 
 export async function deleteMessage(
-  ikeId: string,
+  pondId: string,
   messageId: string,
   token: string,
 ): Promise<void> {
-  const { error } = await api.post(`/ike/${ikeId}/chat/${messageId}/delete`, {}, token)
+  const { error } = await api.post(`/pond/${pondId}/chat/${messageId}/delete`, {}, token)
   if (error) throw new Error(error)
 }
 
-export async function joinIke(ikeId: string, token: string): Promise<ServerIke> {
-  const { data, error } = await api.post(`/ike/${ikeId}/join`, {}, token)
+export async function joinPond(pondId: string, token: string): Promise<ServerPond> {
+  const { data, error } = await api.post(`/pond/${pondId}/join`, {}, token)
   if (error) throw new Error(error)
-  return parseOrThrow(ServerIkeSchema, data, 'joinIke')
+  return parseOrThrow(ServerPondSchema, data, 'joinPond')
 }
 
-export async function leaveIke(ikeId: string, token: string): Promise<void> {
-  const { error } = await api.post(`/ike/${ikeId}/leave`, {}, token)
+export async function leavePond(pondId: string, token: string): Promise<void> {
+  const { error } = await api.post(`/pond/${pondId}/leave`, {}, token)
   if (error) throw new Error(error)
 }
 
-export async function applyIke(
+export async function applyPond(
   field: string,
   level: string,
   purpose: string,
   token: string,
-): Promise<ServerIke> {
-  const { data, error } = await api.post('/ike/apply', { field, level, purpose }, token)
+): Promise<ServerPond> {
+  const { data, error } = await api.post('/pond/apply', { field, level, purpose }, token)
   if (error) throw new Error(error)
-  return parseOrThrow(ServerIkeSchema, data, 'applyIke')
+  return parseOrThrow(ServerPondSchema, data, 'applyPond')
 }
 
 export async function callAiFish(params: {
@@ -111,7 +111,7 @@ export async function callAiFish(params: {
   memberCount?: number
   userMessageCount?: number
 }): Promise<AiFishResponse> {
-  const { data, error } = await api.post('/ike/ai-fish', params)
+  const { data, error } = await api.post('/pond/ai-fish', params)
   if (error) throw new Error(error)
   return parseOrThrow(AiFishResponseSchema, data, 'callAiFish')
 }

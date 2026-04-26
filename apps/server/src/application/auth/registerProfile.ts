@@ -1,5 +1,5 @@
 import type { IProfileRepository } from '../../domain/profile/repository'
-import type { CreateProfileInput } from '../../domain/profile/entity'
+import type { CreateProfileInput } from '../../domain/profile/repository'
 import type { Profile } from '../../domain/profile/entity'
 
 export class RegisterProfileUseCase {

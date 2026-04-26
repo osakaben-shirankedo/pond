@@ -31,7 +31,7 @@ export function usePostTimelineMutation() {
   const { token } = useAuthToken()
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { ike_id: string; ike_category: string; content: string }) =>
+    mutationFn: (body: { pond_id: string; pond_category: string; content: string }) =>
       postTimelinePost(body, token!),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.timeline.all() })

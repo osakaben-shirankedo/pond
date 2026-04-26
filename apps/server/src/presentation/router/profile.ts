@@ -5,7 +5,7 @@ import { D1ProfileRepository } from '../../infrastructure/repository/d1ProfileRe
 import { D1UserRepository } from '../../infrastructure/repository/d1UserRepository'
 import { GetProfileUseCase } from '../../application/profile/getProfile'
 import { EditProfileUseCase } from '../../application/profile/editProfile'
-import { UpdateProfileInputSchema } from '../../domain/profile/entity'
+import { UpdateProfileInput } from '../../domain/profile/repository'
 import { authMiddleware } from '../middleware/auth'
 import type { Env } from '../../index'
 
@@ -31,7 +31,7 @@ router.get('/', async (c) => {
 
 router.post('/edit', async (c) => {
   const body = await c.req.json()
-  const parsed = v.safeParse(UpdateProfileInputSchema, body)
+  const parsed = v.safeParse(UpdateProfileInput, body)
   if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)
@@ -59,7 +59,7 @@ router.get('/:user_id', async (c) => {
 
 router.post('/:user_id/edit', async (c) => {
   const body = await c.req.json()
-  const parsed = v.safeParse(UpdateProfileInputSchema, body)
+  const parsed = v.safeParse(UpdateProfileInput, body)
   if (!parsed.success) return c.json({ error: v.flatten(parsed.issues) }, 400)
 
   const db = drizzle(c.env.POND_DB)

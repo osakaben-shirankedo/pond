@@ -2,50 +2,50 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthToken } from '../useAuthToken'
 import { queryKeys } from '../queryKeys'
 import {
-  fetchIkeList,
-  fetchIkeMembers,
-  fetchIkeChat,
+  fetchPondList,
+  fetchPondMembers,
+  fetchPondChat,
   sendMessage,
   editMessage,
   replyToMessage,
   deleteMessage,
-  joinIke,
-  leaveIke,
-  applyIke,
+  joinPond,
+  leavePond,
+  applyPond,
   callAiFish,
-} from '../endpoints/ike'
+} from '../endpoints/pond'
 
 // ─────────────────────────────────────────
 // Queries
 // ─────────────────────────────────────────
 
-export function useIkeListQuery() {
+export function usePondListQuery() {
   const { token, isLoaded } = useAuthToken()
   return useQuery({
-    queryKey: queryKeys.ike.list(),
-    queryFn: () => fetchIkeList(token!),
+    queryKey: queryKeys.pond.list(),
+    queryFn: () => fetchPondList(token!),
     enabled: isLoaded && !!token,
     staleTime: 60_000,
   })
 }
 
-export function useIkeMembersQuery(ikeId: string, enabled = true) {
+export function usePondMembersQuery(pondId: string, enabled = true) {
   const { token, isLoaded } = useAuthToken()
   return useQuery({
-    queryKey: queryKeys.ike.members(ikeId),
-    queryFn: () => fetchIkeMembers(ikeId, token!),
-    enabled: isLoaded && !!token && !!ikeId && enabled,
+    queryKey: queryKeys.pond.members(pondId),
+    queryFn: () => fetchPondMembers(pondId, token!),
+    enabled: isLoaded && !!token && !!pondId && enabled,
     staleTime: 60_000,
   })
 }
 
 /** チャットは 5 秒ポーリング */
-export function useIkeChatQuery(ikeId: string, enabled = true) {
+export function usePondChatQuery(pondId: string, enabled = true) {
   const { token, isLoaded } = useAuthToken()
   return useQuery({
-    queryKey: queryKeys.ike.chat(ikeId),
-    queryFn: () => fetchIkeChat(ikeId, token!),
-    enabled: isLoaded && !!token && !!ikeId && enabled,
+    queryKey: queryKeys.pond.chat(pondId),
+    queryFn: () => fetchPondChat(pondId, token!),
+    enabled: isLoaded && !!token && !!pondId && enabled,
     refetchInterval: 5_000,
     staleTime: 0,
   })
@@ -55,83 +55,83 @@ export function useIkeChatQuery(ikeId: string, enabled = true) {
 // Mutations
 // ─────────────────────────────────────────
 
-export function useSendMessageMutation(ikeId: string) {
+export function useSendMessageMutation(pondId: string) {
   const { token } = useAuthToken()
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ content, publicRange }: { content: string; publicRange?: string }) =>
-      sendMessage(ikeId, content, token!, publicRange),
+      sendMessage(pondId, content, token!, publicRange),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.ike.chat(ikeId) })
+      qc.invalidateQueries({ queryKey: queryKeys.pond.chat(pondId) })
     },
   })
 }
 
-export function useEditMessageMutation(ikeId: string) {
+export function useEditMessageMutation(pondId: string) {
   const { token } = useAuthToken()
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ messageId, content }: { messageId: string; content: string }) =>
-      editMessage(ikeId, messageId, content, token!),
+      editMessage(pondId, messageId, content, token!),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.ike.chat(ikeId) })
+      qc.invalidateQueries({ queryKey: queryKeys.pond.chat(pondId) })
     },
   })
 }
 
-export function useReplyToMessageMutation(ikeId: string) {
+export function useReplyToMessageMutation(pondId: string) {
   const { token } = useAuthToken()
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ messageId, content }: { messageId: string; content: string }) =>
-      replyToMessage(ikeId, messageId, content, token!),
+      replyToMessage(pondId, messageId, content, token!),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.ike.chat(ikeId) })
+      qc.invalidateQueries({ queryKey: queryKeys.pond.chat(pondId) })
     },
   })
 }
 
-export function useDeleteMessageMutation(ikeId: string) {
+export function useDeleteMessageMutation(pondId: string) {
   const { token } = useAuthToken()
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (messageId: string) => deleteMessage(ikeId, messageId, token!),
+    mutationFn: (messageId: string) => deleteMessage(pondId, messageId, token!),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.ike.chat(ikeId) })
+      qc.invalidateQueries({ queryKey: queryKeys.pond.chat(pondId) })
     },
   })
 }
 
-export function useJoinIkeMutation() {
+export function useJoinPondMutation() {
   const { token } = useAuthToken()
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (ikeId: string) => joinIke(ikeId, token!),
+    mutationFn: (pondId: string) => joinPond(pondId, token!),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.ike.all() })
+      qc.invalidateQueries({ queryKey: queryKeys.pond.all() })
     },
   })
 }
 
-export function useLeaveIkeMutation() {
+export function useLeavePondMutation() {
   const { token } = useAuthToken()
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (ikeId: string) => leaveIke(ikeId, token!),
+    mutationFn: (pondId: string) => leavePond(pondId, token!),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.ike.all() })
+      qc.invalidateQueries({ queryKey: queryKeys.pond.all() })
     },
   })
 }
 
-export function useApplyIkeMutation() {
+export function useApplyPondMutation() {
   const { token } = useAuthToken()
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (params: { field: string; level: string; purpose: string }) =>
-      applyIke(params.field, params.level, params.purpose, token!),
+      applyPond(params.field, params.level, params.purpose, token!),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.ike.all() })
+      qc.invalidateQueries({ queryKey: queryKeys.pond.all() })
     },
   })
 }

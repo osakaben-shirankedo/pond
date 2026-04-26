@@ -1,19 +1,38 @@
 // @ts-ignore - bun:sqlite is available in Bun test runtime
 import { Database } from 'bun:sqlite'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { sign } from 'hono/jwt'
 import app from '../../src/index'
 import { createD1Mock } from './d1Mock'
 
-const MIGRATION_PATH = resolve(import.meta.dir, '../../migrations/0000_third_eternals.sql')
+const MIGRATIONS_DIR = resolve(import.meta.dir, '../../migrations')
 const JWT_SECRET = 'test-secret'
+
+function applyMigrations(sqliteDb: InstanceType<typeof Database>) {
+  const files = readdirSync(MIGRATIONS_DIR)
+    .filter((f) => /^\d{4}_.*\.sql$/.test(f))
+    .sort()
+  for (const file of files) {
+    const sql = readFileSync(resolve(MIGRATIONS_DIR, file), 'utf-8')
+    const statements = sql
+      .split(/;|-->\s*statement-breakpoint/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+    for (const stmt of statements) {
+      try {
+        sqliteDb.exec(stmt)
+      } catch {
+        // ignore errors from already-applied or no-op statements
+      }
+    }
+  }
+}
 
 export function createTestEnv() {
   // @ts-ignore
   const sqliteDb = new Database(':memory:')
-  const migration = readFileSync(MIGRATION_PATH, 'utf-8')
-  sqliteDb.exec(migration)
+  applyMigrations(sqliteDb)
 
   const mockD1 = createD1Mock(sqliteDb)
   const bindings = { POND_DB: mockD1 as unknown, JWT_SECRET }

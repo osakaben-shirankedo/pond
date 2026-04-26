@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import authRouter from './presentation/router/auth'
-import ikeRouter from './presentation/router/ike'
+import pondRouter from './presentation/router/pond'
 import profileRouter from './presentation/router/profile'
 import timelineRouter from './presentation/router/timeline'
 import challengeRouter from './presentation/router/challenge'
@@ -24,7 +24,7 @@ app.use('*', cors())
 app.get('/health', (c) => c.json({ status: 'ok' }))
 
 app.route('/', authRouter)
-app.route('/ike', ikeRouter)
+app.route('/pond', pondRouter)
 app.route('/profile', profileRouter)
 app.route('/timeline', timelineRouter)
 app.route('/challenge', challengeRouter)

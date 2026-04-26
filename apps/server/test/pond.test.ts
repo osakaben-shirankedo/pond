@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'bun:test'
 import { createTestEnv, json, authHeader, registerUser } from './helpers/setup'
 
-describe('Ike endpoints', () => {
+describe('Pond endpoints', () => {
   let fetch: ReturnType<typeof createTestEnv>['fetch']
   let sqliteDb: ReturnType<typeof createTestEnv>['sqliteDb']
   let token: string
@@ -11,12 +11,11 @@ describe('Ike endpoints', () => {
     ;({ fetch, sqliteDb } = createTestEnv())
     token = await registerUser(fetch)
 
-    // Fetch userId from DB
     const row = sqliteDb.prepare('SELECT id FROM users LIMIT 1').get() as { id: string }
     userId = row.id
   })
 
-  function seedIke(ikeId: string, memberIds: string[] = []) {
+  function seedPond(pondId: string, memberIds: string[] = []) {
     const now = new Date().toISOString()
     const chatRoomId = crypto.randomUUID()
     sqliteDb
@@ -26,10 +25,10 @@ describe('Ike endpoints', () => {
       .run(chatRoomId, now, now)
     sqliteDb
       .prepare(
-        'INSERT INTO ikes (id, ike_name, description, member_ids, chat_room_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO ponds (id, name, description, member_ids, chat_room_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
       )
-      .run(ikeId, 'Test Ike', 'desc', JSON.stringify(memberIds), chatRoomId, now, now)
-    return { ikeId, chatRoomId }
+      .run(pondId, 'Test Pond', 'desc', JSON.stringify(memberIds), chatRoomId, now, now)
+    return { pondId, chatRoomId }
   }
 
   function seedMessage(chatRoomId: string, msgUserId: string) {
@@ -44,90 +43,90 @@ describe('Ike endpoints', () => {
   }
 
   // ──────────────────────────────────────────
-  // GET /ike/list
+  // GET /pond/list
   // ──────────────────────────────────────────
-  describe('GET /ike/list', () => {
-    it('200: returns empty array when not in any ike', async () => {
-      const res = await fetch('/ike/list', { headers: authHeader(token) })
+  describe('GET /pond/list', () => {
+    it('200: returns empty array when not in any pond', async () => {
+      const res = await fetch('/pond/list', { headers: authHeader(token) })
       expect(res.status).toBe(200)
       expect(await res.json()).toEqual([])
     })
 
-    it('200: returns ikes user is member of', async () => {
-      const ikeId = crypto.randomUUID()
-      seedIke(ikeId, [userId])
-      const res = await fetch('/ike/list', { headers: authHeader(token) })
+    it('200: returns ponds user is member of', async () => {
+      const pondId = crypto.randomUUID()
+      seedPond(pondId, [userId])
+      const res = await fetch('/pond/list', { headers: authHeader(token) })
       expect(res.status).toBe(200)
       const body = (await res.json()) as any[]
       expect(body.length).toBe(1)
-      expect(body[0].id).toBe(ikeId)
+      expect(body[0].id).toBe(pondId)
     })
 
     it('401: no token', async () => {
-      const res = await fetch('/ike/list')
+      const res = await fetch('/pond/list')
       expect(res.status).toBe(401)
     })
   })
 
   // ──────────────────────────────────────────
-  // GET /ike/:ike_id/status
+  // GET /pond/:pond_id/status
   // ──────────────────────────────────────────
-  describe('GET /ike/:ike_id/status', () => {
-    it('200: returns ike', async () => {
-      const ikeId = crypto.randomUUID()
-      seedIke(ikeId, [userId])
-      const res = await fetch(`/ike/${ikeId}/status`, { headers: authHeader(token) })
+  describe('GET /pond/:pond_id/status', () => {
+    it('200: returns pond', async () => {
+      const pondId = crypto.randomUUID()
+      seedPond(pondId, [userId])
+      const res = await fetch(`/pond/${pondId}/status`, { headers: authHeader(token) })
       expect(res.status).toBe(200)
       const body = (await res.json()) as any
-      expect(body.id).toBe(ikeId)
+      expect(body.id).toBe(pondId)
     })
 
-    it('404: ike not found', async () => {
-      const res = await fetch('/ike/nonexistent/status', { headers: authHeader(token) })
+    it('404: pond not found', async () => {
+      const res = await fetch('/pond/nonexistent/status', { headers: authHeader(token) })
       expect(res.status).toBe(404)
     })
 
     it('401: no token', async () => {
-      const res = await fetch('/ike/some-id/status')
+      const res = await fetch('/pond/some-id/status')
       expect(res.status).toBe(401)
     })
   })
 
   // ──────────────────────────────────────────
-  // GET /ike/:ike_id/chat
+  // GET /pond/:pond_id/chat
   // ──────────────────────────────────────────
-  describe('GET /ike/:ike_id/chat', () => {
+  describe('GET /pond/:pond_id/chat', () => {
     it('200: returns messages', async () => {
-      const ikeId = crypto.randomUUID()
-      const { chatRoomId } = seedIke(ikeId, [userId])
+      const pondId = crypto.randomUUID()
+      const { chatRoomId } = seedPond(pondId, [userId])
       seedMessage(chatRoomId, userId)
 
-      const res = await fetch(`/ike/${ikeId}/chat`, { headers: authHeader(token) })
+      const res = await fetch(`/pond/${pondId}/chat`, { headers: authHeader(token) })
       expect(res.status).toBe(200)
       const body = (await res.json()) as any[]
       expect(body.length).toBe(1)
       expect(body[0].content).toBe('Hello')
     })
 
-    it('404: ike not found', async () => {
-      const res = await fetch('/ike/nonexistent/chat', { headers: authHeader(token) })
+    it('404: pond not found', async () => {
+      const res = await fetch('/pond/nonexistent/chat', { headers: authHeader(token) })
       expect(res.status).toBe(404)
     })
 
     it('401: no token', async () => {
-      const res = await fetch('/ike/some-id/chat')
+      const res = await fetch('/pond/some-id/chat')
       expect(res.status).toBe(401)
     })
   })
 
   // ──────────────────────────────────────────
-  // POST /ike/:ike_id/chat/message
+  // POST /pond/:pond_id/chat/message
   // ──────────────────────────────────────────
-  describe('POST /ike/:ike_id/chat/message', () => {
+  describe('POST /pond/:pond_id/chat/message', () => {
     it('201: member can post message', async () => {
-      const ikeId = crypto.randomUUID()
-      seedIke(ikeId, [userId])
-      const res = await fetch(`/ike/${ikeId}/chat/message`, {
+      const pondId = crypto.randomUUID()
+      seedPond(pondId, [userId])
+      const res = await fetch(`/pond/${pondId}/chat/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader(token) },
         body: JSON.stringify({ content: 'Hi!' }),
@@ -138,9 +137,9 @@ describe('Ike endpoints', () => {
     })
 
     it('403: non-member cannot post', async () => {
-      const ikeId = crypto.randomUUID()
-      seedIke(ikeId, []) // no members
-      const res = await fetch(`/ike/${ikeId}/chat/message`, {
+      const pondId = crypto.randomUUID()
+      seedPond(pondId, []) // no members
+      const res = await fetch(`/pond/${pondId}/chat/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader(token) },
         body: JSON.stringify({ content: 'Hi!' }),
@@ -148,8 +147,8 @@ describe('Ike endpoints', () => {
       expect(res.status).toBe(403)
     })
 
-    it('404: ike not found', async () => {
-      const res = await fetch('/ike/nonexistent/chat/message', {
+    it('404: pond not found', async () => {
+      const res = await fetch('/pond/nonexistent/chat/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader(token) },
         body: JSON.stringify({ content: 'Hi!' }),
@@ -158,9 +157,9 @@ describe('Ike endpoints', () => {
     })
 
     it('400: empty content', async () => {
-      const ikeId = crypto.randomUUID()
-      seedIke(ikeId, [userId])
-      const res = await fetch(`/ike/${ikeId}/chat/message`, {
+      const pondId = crypto.randomUUID()
+      seedPond(pondId, [userId])
+      const res = await fetch(`/pond/${pondId}/chat/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader(token) },
         body: JSON.stringify({ content: '' }),
@@ -169,7 +168,7 @@ describe('Ike endpoints', () => {
     })
 
     it('401: no token', async () => {
-      const res = await fetch('/ike/some-id/chat/message', {
+      const res = await fetch('/pond/some-id/chat/message', {
         method: 'POST',
         ...json({ content: 'Hi!' }),
       })
@@ -178,15 +177,15 @@ describe('Ike endpoints', () => {
   })
 
   // ──────────────────────────────────────────
-  // POST /ike/:ike_id/chat/:message_id/edit
+  // POST /pond/:pond_id/chat/:message_id/edit
   // ──────────────────────────────────────────
-  describe('POST /ike/:ike_id/chat/:message_id/edit', () => {
+  describe('POST /pond/:pond_id/chat/:message_id/edit', () => {
     it('200: owner can edit', async () => {
-      const ikeId = crypto.randomUUID()
-      const { chatRoomId } = seedIke(ikeId, [userId])
+      const pondId = crypto.randomUUID()
+      const { chatRoomId } = seedPond(pondId, [userId])
       const msgId = seedMessage(chatRoomId, userId)
 
-      const res = await fetch(`/ike/${ikeId}/chat/${msgId}/edit`, {
+      const res = await fetch(`/pond/${pondId}/chat/${msgId}/edit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader(token) },
         body: JSON.stringify({ content: 'Edited!' }),
@@ -197,12 +196,12 @@ describe('Ike endpoints', () => {
     })
 
     it('403: cannot edit others message', async () => {
-      const ikeId = crypto.randomUUID()
-      const { chatRoomId } = seedIke(ikeId, [userId])
+      const pondId = crypto.randomUUID()
+      const { chatRoomId } = seedPond(pondId, [userId])
       const otherId = crypto.randomUUID()
-      const msgId = seedMessage(chatRoomId, otherId) // message by another user
+      const msgId = seedMessage(chatRoomId, otherId)
 
-      const res = await fetch(`/ike/${ikeId}/chat/${msgId}/edit`, {
+      const res = await fetch(`/pond/${pondId}/chat/${msgId}/edit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader(token) },
         body: JSON.stringify({ content: 'Hacked!' }),
@@ -211,9 +210,9 @@ describe('Ike endpoints', () => {
     })
 
     it('404: message not found', async () => {
-      const ikeId = crypto.randomUUID()
-      seedIke(ikeId, [userId])
-      const res = await fetch(`/ike/${ikeId}/chat/nonexistent/edit`, {
+      const pondId = crypto.randomUUID()
+      seedPond(pondId, [userId])
+      const res = await fetch(`/pond/${pondId}/chat/nonexistent/edit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader(token) },
         body: JSON.stringify({ content: 'x' }),
@@ -222,7 +221,7 @@ describe('Ike endpoints', () => {
     })
 
     it('401: no token', async () => {
-      const res = await fetch('/ike/x/chat/y/edit', {
+      const res = await fetch('/pond/x/chat/y/edit', {
         method: 'POST',
         ...json({ content: 'x' }),
       })
@@ -231,15 +230,15 @@ describe('Ike endpoints', () => {
   })
 
   // ──────────────────────────────────────────
-  // POST /ike/:ike_id/chat/:message_id/delete
+  // POST /pond/:pond_id/chat/:message_id/delete
   // ──────────────────────────────────────────
-  describe('POST /ike/:ike_id/chat/:message_id/delete', () => {
+  describe('POST /pond/:pond_id/chat/:message_id/delete', () => {
     it('200: owner can delete', async () => {
-      const ikeId = crypto.randomUUID()
-      const { chatRoomId } = seedIke(ikeId, [userId])
+      const pondId = crypto.randomUUID()
+      const { chatRoomId } = seedPond(pondId, [userId])
       const msgId = seedMessage(chatRoomId, userId)
 
-      const res = await fetch(`/ike/${ikeId}/chat/${msgId}/delete`, {
+      const res = await fetch(`/pond/${pondId}/chat/${msgId}/delete`, {
         method: 'POST',
         headers: authHeader(token),
       })
@@ -249,12 +248,12 @@ describe('Ike endpoints', () => {
     })
 
     it('403: cannot delete others message', async () => {
-      const ikeId = crypto.randomUUID()
-      const { chatRoomId } = seedIke(ikeId, [userId])
+      const pondId = crypto.randomUUID()
+      const { chatRoomId } = seedPond(pondId, [userId])
       const otherId = crypto.randomUUID()
       const msgId = seedMessage(chatRoomId, otherId)
 
-      const res = await fetch(`/ike/${ikeId}/chat/${msgId}/delete`, {
+      const res = await fetch(`/pond/${pondId}/chat/${msgId}/delete`, {
         method: 'POST',
         headers: authHeader(token),
       })
@@ -262,9 +261,9 @@ describe('Ike endpoints', () => {
     })
 
     it('404: message not found', async () => {
-      const ikeId = crypto.randomUUID()
-      seedIke(ikeId, [userId])
-      const res = await fetch(`/ike/${ikeId}/chat/nonexistent/delete`, {
+      const pondId = crypto.randomUUID()
+      seedPond(pondId, [userId])
+      const res = await fetch(`/pond/${pondId}/chat/nonexistent/delete`, {
         method: 'POST',
         headers: authHeader(token),
       })
@@ -272,21 +271,21 @@ describe('Ike endpoints', () => {
     })
 
     it('401: no token', async () => {
-      const res = await fetch('/ike/x/chat/y/delete', { method: 'POST' })
+      const res = await fetch('/pond/x/chat/y/delete', { method: 'POST' })
       expect(res.status).toBe(401)
     })
   })
 
   // ──────────────────────────────────────────
-  // POST /ike/:ike_id/chat/:message_id/reply
+  // POST /pond/:pond_id/chat/:message_id/reply
   // ──────────────────────────────────────────
-  describe('POST /ike/:ike_id/chat/:message_id/reply', () => {
+  describe('POST /pond/:pond_id/chat/:message_id/reply', () => {
     it('201: member can reply', async () => {
-      const ikeId = crypto.randomUUID()
-      const { chatRoomId } = seedIke(ikeId, [userId])
+      const pondId = crypto.randomUUID()
+      const { chatRoomId } = seedPond(pondId, [userId])
       const msgId = seedMessage(chatRoomId, userId)
 
-      const res = await fetch(`/ike/${ikeId}/chat/${msgId}/reply`, {
+      const res = await fetch(`/pond/${pondId}/chat/${msgId}/reply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader(token) },
         body: JSON.stringify({ content: 'Reply!' }),
@@ -297,12 +296,12 @@ describe('Ike endpoints', () => {
     })
 
     it('403: non-member cannot reply', async () => {
-      const ikeId = crypto.randomUUID()
-      const { chatRoomId } = seedIke(ikeId, []) // user is not a member
+      const pondId = crypto.randomUUID()
+      const { chatRoomId } = seedPond(pondId, [])
       const otherId = crypto.randomUUID()
       const msgId = seedMessage(chatRoomId, otherId)
 
-      const res = await fetch(`/ike/${ikeId}/chat/${msgId}/reply`, {
+      const res = await fetch(`/pond/${pondId}/chat/${msgId}/reply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader(token) },
         body: JSON.stringify({ content: 'Reply!' }),
@@ -310,8 +309,8 @@ describe('Ike endpoints', () => {
       expect(res.status).toBe(403)
     })
 
-    it('404: ike not found', async () => {
-      const res = await fetch('/ike/nonexistent/chat/some-msg/reply', {
+    it('404: pond not found', async () => {
+      const res = await fetch('/pond/nonexistent/chat/some-msg/reply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader(token) },
         body: JSON.stringify({ content: 'Reply!' }),
@@ -320,7 +319,7 @@ describe('Ike endpoints', () => {
     })
 
     it('401: no token', async () => {
-      const res = await fetch('/ike/x/chat/y/reply', {
+      const res = await fetch('/pond/x/chat/y/reply', {
         method: 'POST',
         ...json({ content: 'Reply!' }),
       })

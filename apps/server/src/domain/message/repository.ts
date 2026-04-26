@@ -1,4 +1,12 @@
+import * as v from 'valibot'
+import { PublicRangeSchema } from '../user/entity'
 import type { Message } from './entity'
+
+export const PostMessageInput = v.object({
+  content: v.pipe(v.string(), v.minLength(1)),
+  public_range: v.optional(PublicRangeSchema, 'all'),
+})
+export type PostMessageInput = v.InferOutput<typeof PostMessageInput>
 
 export interface IMessageRepository {
   findById(id: string): Promise<Message | null>

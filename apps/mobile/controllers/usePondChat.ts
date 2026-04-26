@@ -10,13 +10,13 @@ import { CHALLENGES, PAST_CHALLENGES, FIELD_ID_MAP, type Challenge } from '@/mod
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authStorage } from '@/services/auth';
 import {
-  useIkeMembersQuery,
-  useIkeChatQuery,
+  usePondMembersQuery,
+  usePondChatQuery,
   useSendMessageMutation,
   useEditMessageMutation,
   useReplyToMessageMutation,
   useDeleteMessageMutation,
-  useLeaveIkeMutation,
+  useLeavePondMutation,
   useAiFishMutation,
   type MemberProfile,
   type ServerMessage,
@@ -73,14 +73,14 @@ export function usePondChat(field: string, level: string, pondId: string) {
 
   const listRef = useRef<FlatList>(null);
 
-  const { data: membersData } = useIkeMembersQuery(pondId, isServerPond);
-  const { data: chatData } = useIkeChatQuery(pondId, isServerPond);
+  const { data: membersData } = usePondMembersQuery(pondId, isServerPond);
+  const { data: chatData } = usePondChatQuery(pondId, isServerPond);
 
   const sendMutation = useSendMessageMutation(pondId);
   const editMutation = useEditMessageMutation(pondId);
   const replyMutation = useReplyToMessageMutation(pondId);
   const deleteMutation = useDeleteMessageMutation(pondId);
-  const leaveMutation = useLeaveIkeMutation();
+  const leaveMutation = useLeavePondMutation();
   const aiFishMutation = useAiFishMutation();
 
   const profileMap = useMemo(

@@ -10,13 +10,13 @@ type UserRow = {
   nickname: string
   email: string
   encrypted_password: string
-  belonging_ike_ids: string
+  belonging_pond_ids: string
   created_at: string
   updated_at: string
 }
 
 function rowToUser(row: UserRow): User {
-  return { ...row, belonging_ike_ids: JSON.parse(row.belonging_ike_ids) }
+  return { ...row, belonging_pond_ids: JSON.parse(row.belonging_pond_ids) }
 }
 
 export class D1UserRepository implements IUserRepository {
@@ -38,11 +38,11 @@ export class D1UserRepository implements IUserRepository {
   }
 
   async create(user: User): Promise<void> {
-    await this.db.insert(users).values({ ...user, belonging_ike_ids: JSON.stringify(user.belonging_ike_ids) })
+    await this.db.insert(users).values({ ...user, belonging_pond_ids: JSON.stringify(user.belonging_pond_ids) })
   }
 
   async update(user: User): Promise<void> {
-    await this.db.update(users).set({ ...user, belonging_ike_ids: JSON.stringify(user.belonging_ike_ids) }).where(eq(users.id, user.id))
+    await this.db.update(users).set({ ...user, belonging_pond_ids: JSON.stringify(user.belonging_pond_ids) }).where(eq(users.id, user.id))
   }
 
   async delete(id: string): Promise<void> {
