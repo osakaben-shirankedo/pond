@@ -1,6 +1,4 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { PondEntry } from '@/models/pond';
 
 type UserStore = {
@@ -26,37 +24,29 @@ const INITIAL: Pick<UserStore, 'userId' | 'avatarId' | 'ponds' | 'unreadPondIds'
   unreadPondIds: [],
 };
 
-export const useUserStore = create<UserStore>()(
-  persist(
-    (set) => ({
-      ...INITIAL,
-      setUserId: (userId) => set({ userId }),
-      setAvatarId: (avatarId) => set({ avatarId }),
-      setPonds: (ponds) => set({ ponds }),
-      addPond: (pond) =>
-        set((s) => ({
-          ponds: [...s.ponds.filter((p) => p.field !== pond.field), pond],
-        })),
-      removePond: (pondId, field) =>
-        set((s) => ({
-          ponds: s.ponds.filter((p) => !(p.pondId === pondId || p.field === field)),
-        })),
-      setUnreadPondIds: (unreadPondIds) => set({ unreadPondIds }),
-      markPondUnread: (pondId) =>
-        set((s) => ({
-          unreadPondIds: s.unreadPondIds.includes(pondId)
-            ? s.unreadPondIds
-            : [...s.unreadPondIds, pondId],
-        })),
-      clearPondUnread: (pondId) =>
-        set((s) => ({
-          unreadPondIds: s.unreadPondIds.filter((id) => id !== pondId),
-        })),
-      reset: () => set(INITIAL),
-    }),
-    {
-      name: 'pond-user',
-      storage: createJSONStorage(() => AsyncStorage),
-    },
-  ),
-);
+export const useUserStore = create<UserStore>((set) => ({
+  ...INITIAL,
+  setUserId: (userId) => set({ userId }),
+  setAvatarId: (avatarId) => set({ avatarId }),
+  setPonds: (ponds) => set({ ponds }),
+  addPond: (pond) =>
+    set((s) => ({
+      ponds: [...s.ponds.filter((p) => p.field !== pond.field), pond],
+    })),
+  removePond: (pondId, field) =>
+    set((s) => ({
+      ponds: s.ponds.filter((p) => !(p.pondId === pondId || p.field === field)),
+    })),
+  setUnreadPondIds: (unreadPondIds) => set({ unreadPondIds }),
+  markPondUnread: (pondId) =>
+    set((s) => ({
+      unreadPondIds: s.unreadPondIds.includes(pondId)
+        ? s.unreadPondIds
+        : [...s.unreadPondIds, pondId],
+    })),
+  clearPondUnread: (pondId) =>
+    set((s) => ({
+      unreadPondIds: s.unreadPondIds.filter((id) => id !== pondId),
+    })),
+  reset: () => set(INITIAL),
+}));
