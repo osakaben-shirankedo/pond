@@ -81,7 +81,10 @@ export function useTimeline() {
 
   const posts = useMemo(() => {
     if (serverPosts.length === 0) {
-      return localPosts.length > 0 ? [...localPosts, ...SEED_POSTS] : SEED_POSTS;
+      const localPostMap = new Map(localPosts.map((post) => [post.id, post]));
+      const mergedSeedPosts = SEED_POSTS.map((post) => localPostMap.get(post.id) ?? post);
+      const localOnlyPosts = localPosts.filter((post) => !SEED_POSTS.some((seed) => seed.id === post.id));
+      return [...localOnlyPosts, ...mergedSeedPosts];
     }
     const serverIds = new Set(serverPosts.map((p) => p.id));
     const localOnly = localPosts.filter((p) => !serverIds.has(p.id));
@@ -119,6 +122,25 @@ export function useTimeline() {
     const post = posts.find((p) => p.id === id);
     if (!post) return;
 
+    if (serverPosts.length === 0) {
+      setLocalPosts((prev) => {
+        const nextLikes = post.liked ? post.likes - 1 : post.likes + 1;
+        const existing = prev.find((item) => item.id === id);
+
+        if (existing) {
+          return prev.map((item) =>
+            item.id === id ? { ...item, liked: !post.liked, likes: nextLikes } : item
+          );
+        }
+
+        const seedPost = SEED_POSTS.find((item) => item.id === id);
+        if (!seedPost) return prev;
+
+        return [...prev, { ...seedPost, liked: !post.liked, likes: nextLikes }];
+      });
+      return;
+    }
+
     qc.setQueryData<TimelinePostView[]>(
       queryKeys.timeline.list(categories),
       (prev) =>
@@ -142,7 +164,7 @@ export function useTimeline() {
         qc.invalidateQueries({ queryKey: queryKeys.timeline.list(categories) });
       },
     });
-  }, [posts, qc, categories, likeMutation, unlikeMutation]);
+  }, [posts, serverPosts.length, qc, categories, likeMutation, unlikeMutation, setLocalPosts]);
 
   const openComments = useCallback((postId: string) => {
     setMenuPostId(null);

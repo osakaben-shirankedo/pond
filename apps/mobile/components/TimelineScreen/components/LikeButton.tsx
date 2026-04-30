@@ -12,11 +12,11 @@ import Animated, {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing } from '@/constants/theme';
 
-interface LikeButtonProps {
+type LikeButtonProps = {
   liked: boolean;
   count: number;
   onPress: () => void;
-}
+};
 
 function useParticle(dx: number, dy: number, delay: number) {
   const x = useSharedValue(0);
@@ -34,17 +34,20 @@ function useParticle(dx: number, dy: number, delay: number) {
   }));
 
   const start = useCallback(() => {
-    x.value = 0; y.value = 0; o.value = 0; s.value = 0;
+    x.value = 0;
+    y.value = 0;
+    o.value = 0;
+    s.value = 0;
     x.value = withDelay(delay, withTiming(dx, { duration: 560, easing: Easing.out(Easing.quad) }));
     y.value = withDelay(delay, withTiming(dy, { duration: 560, easing: Easing.out(Easing.quad) }));
-    o.value = withDelay(delay, withSequence(
-      withTiming(1, { duration: 60 }),
-      withTiming(0, { duration: 500 }),
-    ));
-    s.value = withDelay(delay, withSequence(
-      withTiming(1.2, { duration: 60 }),
-      withTiming(0.3, { duration: 500 }),
-    ));
+    o.value = withDelay(
+      delay,
+      withSequence(withTiming(1, { duration: 60 }), withTiming(0, { duration: 500 })),
+    );
+    s.value = withDelay(
+      delay,
+      withSequence(withTiming(1.2, { duration: 60 }), withTiming(0.3, { duration: 500 })),
+    );
   }, [delay, dx, dy, x, y, o, s]);
 
   return { style, start };
@@ -54,7 +57,7 @@ export function LikeButton({ liked, count, onPress }: LikeButtonProps) {
   const heartScale = useSharedValue(1);
 
   const p1 = useParticle(-12, -42, 0);
-  const p2 = useParticle(0,  -58, 70);
+  const p2 = useParticle(0, -58, 70);
   const p3 = useParticle(13, -36, 140);
   const p4 = useParticle(-5, -50, 35);
 
@@ -68,7 +71,10 @@ export function LikeButton({ liked, count, onPress }: LikeButtonProps) {
         withTiming(1.6, { duration: 130, easing: Easing.out(Easing.quad) }),
         withSpring(1, { damping: 7, stiffness: 220 }),
       );
-      p1.start(); p2.start(); p3.start(); p4.start();
+      p1.start();
+      p2.start();
+      p3.start();
+      p4.start();
     } else {
       heartScale.value = withSequence(
         withTiming(0.72, { duration: 90, easing: Easing.in(Easing.quad) }),
@@ -81,7 +87,6 @@ export function LikeButton({ liked, count, onPress }: LikeButtonProps) {
   return (
     <Pressable onPress={handlePress} style={styles.container}>
       <View style={styles.heartWrapper}>
-        {/* Floating particles */}
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
           <View style={styles.center}>
             <Animated.Text style={[styles.particle, p1.style]}>♥</Animated.Text>
@@ -90,7 +95,6 @@ export function LikeButton({ liked, count, onPress }: LikeButtonProps) {
             <Animated.Text style={[styles.particle, p4.style]}>♥</Animated.Text>
           </View>
         </View>
-        {/* Heart icon */}
         <Animated.View style={heartStyle}>
           <Ionicons
             name={liked ? 'heart' : 'heart-outline'}

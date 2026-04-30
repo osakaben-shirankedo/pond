@@ -3,9 +3,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { LikeButton } from '@/components/like-button';
 import { AvatarSprite } from '@/components/avatar-sprite';
 import { LEVEL_COLORS, type Post } from '@/models/timeline';
+import { LikeButton } from './LikeButton';
 
 type Props = {
   post: Post;
