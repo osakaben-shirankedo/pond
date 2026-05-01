@@ -1,7 +1,7 @@
 import * as v from 'valibot'
 import { idSchema } from '../shared/id'
 
-export const PurposeSchema = v.picklist(['analyze_pond', 'asign_pond', 'create_pond'])
+export const PurposeSchema = v.picklist(['analyze_pond', 'assign_pond', 'create_pond'])
 export type Purpose = v.InferOutput<typeof PurposeSchema>
 
 export const Prompt = v.object({

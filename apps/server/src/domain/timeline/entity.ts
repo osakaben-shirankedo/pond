@@ -7,7 +7,7 @@ export const TimelinePost = v.object({
   pond_id: idSchema,
   pond_category: v.string(),
   content: v.string(),
-  reply_to_id: v.nullable(v.string()),
+  reply_to_id: v.nullable(idSchema),
   created_at: v.string(),
   updated_at: v.string(),
 })

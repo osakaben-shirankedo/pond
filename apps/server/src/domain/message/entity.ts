@@ -7,7 +7,7 @@ export const Message = v.object({
   chat_room_id: idSchema,
   user_id: idSchema,
   content: v.string(),
-  reply_to_id: v.nullish(v.string()),
+  reply_to_id: v.nullish(idSchema),
   public_range: v.optional(PublicRangeSchema, 'all'),
   created_at: v.string(),
   updated_at: v.string(),
