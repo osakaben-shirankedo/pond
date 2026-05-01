@@ -5,6 +5,8 @@ import type { Env } from '../../index'
 
 const router = new Hono<Env>()
 
+//TODO : challengeを分離
+
 router.post('/evaluate', async (c) => {
   const body = await c.req.json()
   const parsed = v.safeParse(v.object({
