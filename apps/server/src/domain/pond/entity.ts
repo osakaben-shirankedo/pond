@@ -13,3 +13,5 @@ export const Pond = v.object({
   updated_at: v.string(),
 })
 export type Pond = v.InferOutput<typeof Pond>
+
+// TODO : add domain logic

@@ -15,3 +15,6 @@ export const User = v.object({
   updated_at: v.string(),
 })
 export type User = v.InferOutput<typeof User>
+
+// TODO: add domain logic
+// TODO: add join pond

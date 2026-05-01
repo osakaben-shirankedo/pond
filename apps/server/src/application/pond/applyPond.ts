@@ -7,7 +7,7 @@ export class ApplyPondUseCase {
     private readonly pondRepo: IPondRepository,
     private readonly userRepo: IUserRepository,
     private readonly claudeApiKey: string,
-  ) {}
+  ) { }
 
   async execute(userId: string, field: string, level: string, purpose: string): Promise<Pond> {
     const user = await this.userRepo.findById(userId)
@@ -20,6 +20,8 @@ export class ApplyPondUseCase {
     const assignedPond = await this.assignWithAI(candidates, field, level, purpose)
 
     const now = new Date().toISOString()
+
+    // TODO: change to user.joinPond() and pond.addMember()
     const updatedPond = {
       ...assignedPond,
       member_ids: [...assignedPond.member_ids, userId],
