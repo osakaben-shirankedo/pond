@@ -10,6 +10,7 @@ export class ApplyPondUseCase {
     private readonly claudeApiKey: string,
   ) { }
 
+  // WARN: 引数変更の可能性
   async execute(userId: string, field: string, level: string, purpose: string): Promise<PondSchema> {
     const user = await this.userRepo.findById(userId)
     if (!user) throw new Error('USER_NOT_FOUND')
@@ -20,11 +21,12 @@ export class ApplyPondUseCase {
 
 
 
-    // assert logic
-    candidates.map((item) => { Pond.assertCapacity(item) })
 
     // assign logic
     const assignedPond = await this.assignWithAI(candidates, field, level, purpose)
+
+    // assert logic
+    Pond.assertCapacity(assignedPond);
 
 
     const now = new Date().toISOString()
@@ -47,6 +49,8 @@ export class ApplyPondUseCase {
     return updatedPond
   }
 
+
+  // TODO: 切り離したい
   private async assignWithAI(candidates: PondSchema[], field: string, level: string, purpose: string): Promise<PondSchema> {
     if (!this.claudeApiKey || candidates.length === 1) return candidates[0]
 
