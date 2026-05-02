@@ -1,13 +1,13 @@
-import type { Pond } from './entity'
+import type { PondSchema } from './entity'
 
 export interface IPondRepository {
-  findById(id: string): Promise<Pond | null>
-  findByIds(ids: string[]): Promise<Pond[]>
-  findByChatRoomId(chatRoomId: string): Promise<Pond | null>
-  findByMemberId(userId: string): Promise<Pond[]>
-  findAvailable(userId: string): Promise<Pond[]>
-  findAll(): Promise<Pond[]>
-  create(pond: Pond): Promise<void>
-  update(pond: Pond): Promise<void>
+  findById(id: string): Promise<PondSchema | null>
+  findByIds(ids: string[]): Promise<PondSchema[]>
+  findByChatRoomId(chatRoomId: string): Promise<PondSchema | null>
+  findByMemberId(userId: string): Promise<PondSchema[]>
+  findAvailable(userId: string): Promise<PondSchema[]>
+  findAll(): Promise<PondSchema[]>
+  create(pond: PondSchema): Promise<void>
+  update(pond: PondSchema): Promise<void>
   delete(id: string): Promise<void>
 }
