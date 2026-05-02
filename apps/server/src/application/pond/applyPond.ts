@@ -1,6 +1,7 @@
 import type { IPondRepository } from '../../domain/pond/repository'
 import type { IUserRepository } from '../../domain/user/repository'
-import type { Pond } from '../../domain/pond/entity'
+import type { PondSchema } from '../../domain/pond/entity'
+import { Pond } from '../../domain/pond/entity'
 
 export class ApplyPondUseCase {
   constructor(
@@ -9,7 +10,7 @@ export class ApplyPondUseCase {
     private readonly claudeApiKey: string,
   ) { }
 
-  async execute(userId: string, field: string, level: string, purpose: string): Promise<Pond> {
+  async execute(userId: string, field: string, level: string, purpose: string): Promise<PondSchema> {
     const user = await this.userRepo.findById(userId)
     if (!user) throw new Error('USER_NOT_FOUND')
 
@@ -17,11 +18,17 @@ export class ApplyPondUseCase {
     const candidates = available.filter(pond => pond.name === field)
     if (candidates.length === 0) throw new Error('NO_POND_AVAILABLE')
 
+
+
+    // assert logic
+    candidates.map((item) => { Pond.assertCapacity(item) })
+
+    // assign logic
     const assignedPond = await this.assignWithAI(candidates, field, level, purpose)
+
 
     const now = new Date().toISOString()
 
-    // TODO: change to user.joinPond() and pond.addMember()
     const updatedPond = {
       ...assignedPond,
       member_ids: [...assignedPond.member_ids, userId],
@@ -40,7 +47,7 @@ export class ApplyPondUseCase {
     return updatedPond
   }
 
-  private async assignWithAI(candidates: Pond[], field: string, level: string, purpose: string): Promise<Pond> {
+  private async assignWithAI(candidates: PondSchema[], field: string, level: string, purpose: string): Promise<PondSchema> {
     if (!this.claudeApiKey || candidates.length === 1) return candidates[0]
 
     try {
